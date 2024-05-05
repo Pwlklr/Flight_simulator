@@ -1,0 +1,2 @@
+F-16 plane model: https://sketchfab.com/3d-models/f-16-fighting-falcon-fighter-jet-free-f0b00989e5634764848ef2c235c64db5
+models import: https://github.com/assimp/assimp/tree/master?tab=readme-ov-file

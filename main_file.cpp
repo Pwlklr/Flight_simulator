@@ -20,11 +20,18 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_SWIZZLE
 
+#include <iomanip>
+#include <fstream>
+#include <iostream>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include "ModelLoader.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "constants.h"
@@ -40,9 +47,12 @@ float aspectRatio = 1;
 ShaderProgram* sp;
 
 
+Mesh airplaneMesh; // na górze pliku main_file.cpp
+
+
 //Odkomentuj, żeby rysować kostkę
-/*
-float* vertices = myCubeVertices;
+ /*
+ float* vertices = myCubeVertices;
 float* normals = myCubeNormals;
 float* texCoords = myCubeTexCoords;
 float* colors = myCubeColors;
@@ -50,13 +60,13 @@ int vertexCount = myCubeVertexCount;
 */
 
 //Odkomentuj, żeby rysować czajnik
-
+/*
 float* vertices = myTeapotVertices;
 float* normals = myTeapotVertexNormals;
 float* texCoords = myTeapotTexCoords;
 float* colors = myTeapotColors;
 int vertexCount = myTeapotVertexCount;
-
+*/
 
 
 
@@ -96,8 +106,11 @@ void initOpenGLProgram(GLFWwindow* window) {
     glfwSetKeyCallback(window, keyCallback);
 
     sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
-}
 
+    ModelLoader loader;
+    airplaneMesh = loader.loadModel("models/source/F-16.obj");
+
+}
 
 //Zwolnienie zasobów zajętych przez program
 void freeOpenGLProgram(GLFWwindow* window) {
@@ -107,48 +120,43 @@ void freeOpenGLProgram(GLFWwindow* window) {
 }
 
 
-
-
 //Procedura rysująca zawartość sceny
-void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
-    //************Tutaj umieszczaj kod rysujący obraz******************l
+void drawScene(GLFWwindow *window, float angle_x, float angle_y) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glm::mat4 V = glm::lookAt(
-        glm::vec3(0, 0, -5),
-        glm::vec3(0, 0, 0),
-        glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz widoku
+            glm::vec3(0, 0, 200),
+            glm::vec3(0, 0, 0),
+            glm::vec3(0.0f, 1.0f, 0.0f));
 
-    glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 0.01f, 50.0f); //Wylicz macierz rzutowania
+    glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
     glm::mat4 M = glm::mat4(1.0f);
-    M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
-    M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
+    M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));
+    M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f));
 
-    //wspolrzedna zrodla swiatla
     glm::vec4 lp = glm::vec4(0, 0, -6, 1);
 
-    sp->use();//Aktywacja programu cieniującego
-    //Przeslij parametry programu cieniującego do karty graficznej
+    sp->use();
     glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
     glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
     glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
 
-    glEnableVertexAttribArray(sp->a("vertex"));  //Włącz przesyłanie danych do atrybutu vertex
-    glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, vertices); //Wskaż tablicę z danymi dla atrybutu vertex
-    glEnableVertexAttribArray(sp->a("color"));
-    glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, colors);
+    glEnableVertexAttribArray(sp->a("vertex"));
+    glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh.vertices.data());
+
     glEnableVertexAttribArray(sp->a("normal"));
-    glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, normals);
+    glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh.normals.data());
 
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount); //Narysuj obiekt
+    // Na razie brak teksturowania
 
-    glDisableVertexAttribArray(sp->a("vertex"));  //Wyłącz przesyłanie danych do atrybutu vertex
-    glDisableVertexAttribArray(sp->a("color"));
+    glDrawArrays(GL_TRIANGLES, 0, airplaneMesh.vertices.size());
+
+    glDisableVertexAttribArray(sp->a("vertex"));
     glDisableVertexAttribArray(sp->a("normal"));
 
-    glfwSwapBuffers(window); //Przerzuć tylny bufor na przedni
+    glfwSwapBuffers(window);
 }
 
 
@@ -199,5 +207,6 @@ int main(void)
 
     glfwDestroyWindow(window); //Usuń kontekst OpenGL i okno
     glfwTerminate(); //Zwolnij zasoby zajęte przez GLFW
+
     exit(EXIT_SUCCESS);
 }
