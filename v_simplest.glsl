@@ -22,7 +22,8 @@ void main(void) {
     n = normalize(V*M*normal);
     v = normalize(vec4(0,0,0,1)-V*M*vertex);
 
-    iC = color;
+    // iC = color;
+    iC = vec4(0.9, 0.1, 0.1, 0);
     gl_Position=P*V*M*vertex;
 }
 

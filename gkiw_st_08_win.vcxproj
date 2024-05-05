@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="constants.h" />
     <ClInclude Include="lodepng.h" />
+    <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="shaderprogram.h" />
     <ClInclude Include="myCube.h" />
     <ClInclude Include="myTeapot.h" />
@@ -28,6 +29,7 @@
   <ItemGroup>
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main_file.cpp" />
+    <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="shaderprogram.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -130,7 +132,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>glew\lib\x64;glfw\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glew32s.lib;glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glew32s.lib;glfw3.lib;opengl32.lib;assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>MSVCRT;LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
