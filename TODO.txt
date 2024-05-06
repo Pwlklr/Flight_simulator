@@ -1,0 +1,9 @@
+current functionalities:
+modedl import(use it in the init function)
+working freecam (enable/snap to middle: F, escape: esc, wsad lctrl space: steering, mouse for navigation
+plane is untextured (will do tomorrow probably)
+TODO:
+cam to follow the model
+city
+flightmodel with the whole airplane class for drawing the model (current drawAirplane func is just a Sketch)
+write your stuff here 
