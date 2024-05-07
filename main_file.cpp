@@ -40,21 +40,25 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "myCube.h"
 #include "myTeapot.h"
 
-float delta_time = 0;
+float delta_time = 0; //zmienna globalna określająca czas między klatkami
 
 float speed_x = 0;
 float speed_y = 0;
 float movement_x = 0;
-float aspectRatio = 1;
-bool freecam = true;
 
+//zmienna wykorzystywana do zmiany rozmiaru okna
+float aspectRatio = 1.77777778;
+
+//zmienne globalne dotyczące kamery
+bool freecam = true;
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 200.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-float cameraSpeed = 2.0f;
-float maxCamSpeed = 10.0f;
-float sensitivity = 0.1f;
+float cameraSpeed = 1.0f;
+float maxCamSpeed = 5.0f;
+float sensitivity = 0.09f;
 
+//zmienne globalne wykorzystywane w funkcjionalności freecam
 bool is_w_pressed = false;
 bool is_s_pressed = false;
 bool is_a_pressed = false;
@@ -65,8 +69,12 @@ bool is_esc_pressed = false;
 
 ShaderProgram* sp;
 
+// Uchwyty tekstur - deklaracje globalne
+GLuint tex0;
+GLuint tex1;
 
-Mesh airplaneMesh; // na górze pliku main_file.cpp
+
+Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
 
 
 //Odkomentuj, żeby rysować kostkę
@@ -86,6 +94,25 @@ float* texCoords = myTeapotTexCoords;
 float* colors = myTeapotColors;
 int vertexCount = myTeapotVertexCount;
 */
+
+GLuint readTexture(const char *filename) {
+    GLuint tex;
+    glActiveTexture(GL_TEXTURE0);
+    // Wczytanie do pamięci komputera
+    std::vector<unsigned char> image; // Alokuj wektor do wczytania obrazka
+    unsigned width, height; // Zmienne do których wczytamy wymiary obrazka
+    // Wczytaj obrazek
+    unsigned error = lodepng::decode(image, width, height, filename);
+    // Import do pamięci karty graficznej
+    glGenTextures(1, &tex); // Zainicjuj jeden uchwyt
+    glBindTexture(GL_TEXTURE_2D, tex); // Uaktywnij uchwyt
+    // Wczytaj obrazek do pamięci KG skojarzonej z uchwytem
+    glTexImage2D(GL_TEXTURE_2D, 0, 4, width, height, 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, (unsigned char *)image.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    return tex;
+}
 
 
 
@@ -140,7 +167,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     if (yoffset > 0) {
-        cameraSpeed += 0.1f;
+        cameraSpeed += 0.05f;
     } else if (yoffset < 0) {
         cameraSpeed = std::max(0.1f, cameraSpeed - 0.1f);
     }
@@ -186,8 +213,54 @@ void windowResizeCallback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-//Procedura inicjująca
-void initOpenGLProgram(GLFWwindow* window) {
+
+//funkcja -> do przeniesienia w osobny plik i klasę odpowiedzialną za dalsze modelowanie samolotu
+void drawAirplane(const glm::mat4 &M, const glm::mat4 &P, const glm::mat4 &V, const glm::vec4 lp) {
+
+    sp->use();
+    glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
+    glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+    glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
+    glUniform1i(sp->u("textureMap0"), 0);
+    glUniform1i(sp->u("textureMap1"), 1);
+    glUniform1f(sp->u("lightIntensity"), 1.25f); //test do oświetlenia
+
+    glEnableVertexAttribArray(sp->a("vertex"));
+    glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh.vertices.data());
+
+    glEnableVertexAttribArray(sp->a("normal"));
+    glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh.normals.data());
+
+    glEnableVertexAttribArray(sp->a("texCoord0"));
+    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, airplaneMesh.texCoords.data());
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, tex1); //można rozwinąć potem o inne mapowania
+
+    glDrawArrays(GL_TRIANGLES, 0, airplaneMesh.vertices.size());
+
+    glDisableVertexAttribArray(sp->a("vertex"));
+    glDisableVertexAttribArray(sp->a("normal"));
+    glDisableVertexAttribArray(sp->a("texCoord0"));
+}
+
+//procedura do obsługi ruchu kamerą
+void updateCameraPosition() {
+    float velocity = cameraSpeed * delta_time;
+    if (is_w_pressed) cameraPos += cameraFront * velocity;
+    if (is_s_pressed) cameraPos -= cameraFront * velocity;
+    if (is_a_pressed) cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
+    if (is_d_pressed) cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
+    if (is_space_pressed) cameraPos += cameraUp * velocity;
+    if (is_lctrl_pressed) cameraPos -= cameraUp * velocity;
+}
+
+// Procedura inicjująca
+void initOpenGLProgram(GLFWwindow *window) {
     //************Tutaj umieszczaj kod, który należy wykonać raz, na początku programu************
     glClearColor(0.2, 0.2, 1, 1);
     glEnable(GL_DEPTH_TEST);
@@ -197,50 +270,13 @@ void initOpenGLProgram(GLFWwindow* window) {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
+    sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl"); 
+
+    tex0 = readTexture("F-16_Airframe_BaseColorFinalized.png");
+    tex1 = readTexture("/models/textures/sky.png");
 
     ModelLoader loader;
     airplaneMesh = loader.loadModel("models/source/F-16.obj");
-
-}
-
-//Zwolnienie zasobów zajętych przez program
-void freeOpenGLProgram(GLFWwindow* window) {
-    //************Tutaj umieszczaj kod, który należy wykonać po zakończeniu pętli głównej************
-
-    delete sp;
-}
-
-void drawAirplane(const glm::mat4 &M, const glm::mat4 &P, const glm::mat4 &V, const glm::vec4 lp) {
-
-    sp->use();
-    glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
-    glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
-    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
-    glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
-
-    glEnableVertexAttribArray(sp->a("vertex"));
-    glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh.vertices.data());
-
-    glEnableVertexAttribArray(sp->a("normal"));
-    glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh.normals.data());
-
-    //TODO teksturowanie
-
-    glDrawArrays(GL_TRIANGLES, 0, airplaneMesh.vertices.size());
-
-    glDisableVertexAttribArray(sp->a("vertex"));
-    glDisableVertexAttribArray(sp->a("normal"));
-}
-
-void updateCameraPosition() {
-    float velocity = cameraSpeed * delta_time;
-    if (is_w_pressed) cameraPos += cameraFront * velocity;
-    if (is_s_pressed) cameraPos -= cameraFront * velocity;
-    if (is_a_pressed) cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
-    if (is_d_pressed) cameraPos += cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * velocity;
-    if (is_space_pressed) cameraPos += cameraUp * velocity;
-    if (is_lctrl_pressed) cameraPos -= cameraUp * velocity;
 }
 
 
@@ -260,7 +296,7 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
 
     glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
-    glm::vec4 lp = glm::vec4(0, 0, -6, 1);
+    glm::vec4 lp = glm::vec4(0, 6, 0, 1);
     
     glm::mat4 Mplane = glm::mat4(1.0f);
     Mplane = glm::rotate(Mplane, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));
@@ -269,6 +305,13 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
     drawAirplane(Mplane, P, V, lp);
 
     glfwSwapBuffers(window);
+}
+
+// Zwolnienie zasobów zajętych przez program
+void freeOpenGLProgram(GLFWwindow *window) {
+    //************Tutaj umieszczaj kod, który należy wykonać po zakończeniu pętli głównej************
+
+    delete sp;
 }
 
 
@@ -283,7 +326,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    window = glfwCreateWindow(500, 500, "OpenGL", NULL, NULL);  //Utwórz okno 500x500 o tytule "OpenGL" i kontekst OpenGL.
+    window = glfwCreateWindow(1280, 720, "OpenGL", NULL, NULL); // Utwórz okno 500x500 o tytule "OpenGL" i kontekst OpenGL.
 
     if (!window) //Jeżeli okna nie udało się utworzyć, to zamknij program
     {
