@@ -22,7 +22,7 @@ void RigidBody::add_force_at_point(const glm::vec3 &force, const glm::vec3 &poin
 
 void RigidBody::UpdateBody(float deltaTime) {
 
-    // calculating the position of the model using, a = F / M; V = a / deltaT; S = v / T; 
+    // calculating the position of the model using, a = F / M; V = a * deltaT; S = V * T; 
     glm::vec3 acceleration = mw_force / mass;
     acceleration.y -= G;
     velocity += acceleration * deltaTime;
