@@ -56,7 +56,7 @@ glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 float cameraSpeed = 1.0f;
 float maxCamSpeed = 5.0f;
-float sensitivity = 0.09f;
+float mouseSensitivity = 0.09f;
 
 //zmienne globalne wykorzystywane w funkcjionalności freecam
 bool is_w_pressed = false;
@@ -67,6 +67,10 @@ bool is_space_pressed = false;
 bool is_lctrl_pressed = false;
 bool is_esc_pressed = false;
 
+bool firstMouse = true;
+float lastX = 400, lastY = 300;
+float yaw = -90.0f, pitch = 0.0f;
+
 ShaderProgram* sp;
 
 // Uchwyty tekstur - deklaracje globalne
@@ -75,25 +79,6 @@ GLuint tex1;
 
 
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
-
-
-//Odkomentuj, żeby rysować kostkę
- /*
- float* vertices = myCubeVertices;
-float* normals = myCubeNormals;
-float* texCoords = myCubeTexCoords;
-float* colors = myCubeColors;
-int vertexCount = myCubeVertexCount;
-*/
-
-//Odkomentuj, żeby rysować czajnik
-/*
-float* vertices = myTeapotVertices;
-float* normals = myTeapotVertexNormals;
-float* texCoords = myTeapotTexCoords;
-float* colors = myTeapotColors;
-int vertexCount = myTeapotVertexCount;
-*/
 
 GLuint readTexture(const char *filename) {
     GLuint tex;
@@ -145,6 +130,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             if (!is_esc_pressed) {
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             } else {
+                firstMouse = true;
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             }
         }
@@ -174,10 +160,6 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     if (cameraSpeed > maxCamSpeed) cameraSpeed = maxCamSpeed;
 }
 
-bool firstMouse = true;
-float lastX = 400, lastY = 300;
-float yaw = -90.0f, pitch = 0.0f;
-
 void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     if (firstMouse) {
         lastX = xpos;
@@ -191,8 +173,8 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     lastY = ypos;
 
     //float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
+    xoffset *= mouseSensitivity;
+    yoffset *= mouseSensitivity;
 
     yaw += xoffset;
     pitch += yoffset;
@@ -217,14 +199,7 @@ void windowResizeCallback(GLFWwindow* window, int width, int height) {
 //funkcja -> do przeniesienia w osobny plik i klasę odpowiedzialną za dalsze modelowanie samolotu
 void drawAirplane(const glm::mat4 &M, const glm::mat4 &P, const glm::mat4 &V, const glm::vec4 lp) {
 
-    sp->use();
-    glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
-    glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
-    glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
-    glUniform1i(sp->u("textureMap0"), 0);
-    glUniform1i(sp->u("textureMap1"), 1);
-    glUniform1f(sp->u("lightIntensity"), 1.25f); //test do oświetlenia
 
     glEnableVertexAttribArray(sp->a("vertex"));
     glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh.vertices.data());
@@ -297,6 +272,14 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
     glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
     glm::vec4 lp = glm::vec4(0, 6, 0, 1);
+
+    sp->use();
+    glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
+    glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
+    glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
+    glUniform1i(sp->u("textureMap0"), 0);
+    glUniform1i(sp->u("textureMap1"), 1);
+    glUniform1f(sp->u("lightIntensity"), 1.25f);
     
     glm::mat4 Mplane = glm::mat4(1.0f);
     Mplane = glm::rotate(Mplane, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));

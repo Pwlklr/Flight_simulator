@@ -22,6 +22,7 @@
     <ClInclude Include="constants.h" />
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="RigidBody.h" />
     <ClInclude Include="shaderprogram.h" />
     <ClInclude Include="myCube.h" />
     <ClInclude Include="myTeapot.h" />
@@ -30,6 +31,7 @@
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main_file.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
+    <ClCompile Include="RigidBody.cpp" />
     <ClCompile Include="shaderprogram.cpp" />
   </ItemGroup>
   <ItemGroup>
