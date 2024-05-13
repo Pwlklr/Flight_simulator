@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constants.h" />
+    <ClInclude Include="FlightModel.h" />
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="RigidBody.h" />

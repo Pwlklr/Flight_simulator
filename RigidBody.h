@@ -1,3 +1,4 @@
+#pragma once
 #ifndef RIGIDBODY_H
 #define RIGIDBODY_H
 
@@ -13,6 +14,7 @@
 #include <type_traits>
 #include <variant>
 #include <vector>
+#include <math.h>
 
 #include "constants.h"
 
@@ -22,7 +24,7 @@ private:
     glm::vec3 mb_torque{}; // model's torque in bodu space
 
 public:
-    float mass;                                 // mass of the bodyu in kg
+    float mass;                                 // mass of the body in kg
     glm::vec3 position{};                       // world space
     glm::quat orientation{};                    // world space, using the quaternion representation
     glm::vec3 velocity{};                       // world space, m/s
@@ -35,7 +37,7 @@ public:
     void add_relative_force(const glm::vec3 &force);            // used to simulate forces that are not applied at a specific point (mostly used for calculating the thrust vector effect on the whole body). Used for translation, doesnt affect the body's rotation
     void add_force_at_point(const glm::vec3 &force, const glm::vec3 &point); // adds force and torque to the accumulators m_force and torque used to calculate the resulant force on the entire body. Mostly for rotation
 
-    void UpdateBody(float deltaTime); // updates the position and orientation of the whole body
+    virtual void UpdateBody(float deltaTime); // updates the position and orientation of the whole body
 };
 
 #endif
