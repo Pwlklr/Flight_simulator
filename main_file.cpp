@@ -39,6 +39,7 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "shaderprogram.h"
 #include "myCube.h"
 #include "myTeapot.h"
+#include "FlightModel.h"
 
 float delta_time = 0; //zmienna globalna określająca czas między klatkami
 
@@ -58,6 +59,10 @@ float cameraSpeed = 1.0f;
 float maxCamSpeed = 5.0f;
 float mouseSensitivity = 0.09f;
 
+bool firstMouse = true;
+float lastX = 400, lastY = 300;
+float yaw = -90.0f, pitch = 0.0f;
+
 //zmienne globalne wykorzystywane w funkcjionalności freecam
 bool is_w_pressed = false;
 bool is_s_pressed = false;
@@ -67,9 +72,6 @@ bool is_space_pressed = false;
 bool is_lctrl_pressed = false;
 bool is_esc_pressed = false;
 
-bool firstMouse = true;
-float lastX = 400, lastY = 300;
-float yaw = -90.0f, pitch = 0.0f;
 
 ShaderProgram* sp;
 
@@ -79,6 +81,30 @@ GLuint tex1;
 
 
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
+
+const float mass = 10000.0f;
+const float thrust = 75000.0f;
+
+const float wing_offset = -1.0f;
+const float tail_offset = -6.6f;
+
+Airfoil NACA_2412(NACA_2412_data);
+Airfoil NACA_0012(NACA_0012_data);
+
+glm::mat3 inertia(
+    48531.0f, -1320.0f, 0.0f,
+    -1320.0f, 256608.0f, 0.0f,
+    0.0f, 0.0f, 211333.0f
+);
+
+std::vector<Wing> wings = {
+    Wing({wing_offset, 0.0f, -2.7f}, 6.96f, 2.50f, &NACA_2412, UP, 0.20f), // left wing
+    Wing({wing_offset, 0.0f, +2.7f}, 6.96f, 2.50f, &NACA_2412, UP, 0.20f), // right wing
+    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
+    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 0.15f) // rudder
+};
+
+
 
 GLuint readTexture(const char *filename) {
     GLuint tex;
