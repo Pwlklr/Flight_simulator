@@ -123,7 +123,7 @@ public:
 };
 
 struct Engine {
-    float throttle = 1.0f, thrust;
+    float throttle = 1.0f, thrust; // thrust is constant, throttle is in the range of [0, 1]
 
     Engine(float thrust) :
             thrust(thrust) {}

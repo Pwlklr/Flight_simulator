@@ -54,7 +54,7 @@ float aspectRatio = 1.77777778;
 bool freecam = true;
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 200.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+const glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 float cameraSpeed = 1.0f;
 float maxCamSpeed = 5.0f;
 float mouseSensitivity = 0.09f;
@@ -223,7 +223,7 @@ void windowResizeCallback(GLFWwindow* window, int width, int height) {
 
 
 //funkcja -> do przeniesienia w osobny plik i klasę odpowiedzialną za dalsze modelowanie samolotu
-void drawAirplane(const glm::mat4 &M, const glm::mat4 &P, const glm::mat4 &V, const glm::vec4 lp) {
+void drawAirplane(const glm::mat4 &M) {
 
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 
@@ -290,7 +290,7 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
     } else {
         cameraPos = glm::vec3(0.0f, 0.0f, 200.0f);
         cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-        cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        // cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
     }
 
     glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
@@ -311,7 +311,7 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
     Mplane = glm::rotate(Mplane, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));
     Mplane = glm::rotate(Mplane, angle_x, glm::vec3(0.0f, 1.0f, 0.0f));
     Mplane = glm::translate(Mplane, glm::vec3(given_movement_x, 0.0f, 0.0f));
-    drawAirplane(Mplane, P, V, lp);
+    drawAirplane(Mplane);
 
     glfwSwapBuffers(window);
 }
