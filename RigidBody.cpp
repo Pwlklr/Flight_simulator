@@ -35,6 +35,7 @@ void RigidBody::UpdateBody(float deltaTime) {
     mw_force = glm::vec3(0.0f);
     mb_torque = glm::vec3(0.0f);
 }
+
 void RigidBody::update(float deltaTime) {
     glm::vec3 acceleration = mw_force / mass;
     acceleration.y -= G;
