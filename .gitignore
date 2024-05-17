@@ -9,6 +9,9 @@
 *.user
 *.userosscache
 *.sln.docstates
+gkiw_st_08_win/x64/Debug
+/x64/Debug/gkiw_st_08_win.exe
+/x64/Debug/gkiw_st_08_win.pdb
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
