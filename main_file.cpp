@@ -31,15 +31,93 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
-#include "ModelLoader.h"
 #include <stdlib.h>
 #include <stdio.h>
+
+#include "ModelLoader.h"
 #include "constants.h"
 #include "lodepng.h"
 #include "shaderprogram.h"
 #include "myCube.h"
 #include "myTeapot.h"
 #include "FlightModel.h"
+
+
+namespace inertia {
+
+template <typename T>
+constexpr inline T sq(T x) {
+    return x * x;
+}
+
+// mass element used for inertia tensor calculation
+struct Element {
+    glm::vec3 size;
+    glm::vec3 position; // position in design coordinates
+    glm::vec3 inertia; // moment of inertia
+    glm::vec3 offset; // offset from center of gravity
+    float mass;
+    float volume() const { return size.x * size.y * size.z; }
+};
+
+// cuboid moment of inertia
+inline glm::vec3 cuboid(float mass, const glm::vec3 &size) {
+    float x = size.x, y = size.y, z = size.z;
+    return glm::vec3(sq(y) + sq(z), sq(x) + sq(z), sq(x) + sq(y)) * (1.0f / 12.0f) * mass;
+}
+
+// helper function for the creation of a cuboid mass element
+inline Element cube(const glm::vec3 &position, const glm::vec3 &size, float mass = 0.0f) {
+    glm::vec3 inertia = cuboid(mass, size);
+    return { size, position, inertia, position, mass };
+}
+// calculate inertia tensor for a collection of connected masses
+inline glm::mat3 tensor(std::vector<Element> &elements, bool precomputed_offset = false, glm::vec3 *cg = nullptr) {
+    float Ixx = 0, Iyy = 0, Izz = 0;
+    float Ixy = 0, Ixz = 0, Iyz = 0;
+
+    float mass = 0;
+    glm::vec3 moment_of_inertia(0.0f);
+
+    for (const auto &element : elements) {
+        mass += element.mass;
+        moment_of_inertia += element.mass * element.position;
+    }
+
+    const auto center_of_gravity = moment_of_inertia / mass;
+
+    for (auto &element : elements) {
+        if (!precomputed_offset) {
+            element.offset = element.position - center_of_gravity;
+        } else {
+            element.offset = element.position;
+        }
+
+        const auto offset = element.offset;
+
+        Ixx += element.inertia.x + element.mass * (sq(offset.y) + sq(offset.z));
+        Iyy += element.inertia.y + element.mass * (sq(offset.z) + sq(offset.x));
+        Izz += element.inertia.z + element.mass * (sq(offset.x) + sq(offset.y));
+        Ixy += element.mass * (offset.x * offset.y);
+        Ixz += element.mass * (offset.x * offset.z);
+        Iyz += element.mass * (offset.y * offset.z);
+    }
+
+    if (cg != nullptr) {
+        *cg = center_of_gravity;
+    }
+
+    // clang-format off
+  return {
+      Ixx, -Ixy, -Ixz, 
+      -Ixy, Iyy, -Iyz, 
+      -Ixz, -Iyz, Izz
+  };
+    // clang-format on
+}
+
+}
+
 
 float delta_time = 0; //zmienna globalna określająca czas między klatkami
 
@@ -51,7 +129,7 @@ float movement_x = 0;
 float aspectRatio = 1.77777778;
 
 //zmienne globalne dotyczące kamery
-bool freecam = true;
+bool freecam = false;
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 200.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 const glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -82,27 +160,32 @@ GLuint tex1;
 
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
 
-const float mass = 10000.0f;
+const float mass = 5000.0f;
 const float thrust = 75000.0f;
 
-const float wing_offset = -1.0f;
+const float wing_offset = 0.0f;
 const float tail_offset = -6.6f;
 
 Airfoil NACA_2412(NACA_2412_data);
 Airfoil NACA_0012(NACA_0012_data);
 
-glm::mat3 inertia(
-    48531.0f, -1320.0f, 0.0f,
-    -1320.0f, 256608.0f, 0.0f,
-    0.0f, 0.0f, 211333.0f
-);
+Engine mainEngine(thrust);
 
 std::vector<Wing> wings = {
-    Wing({wing_offset, 0.0f, -2.7f}, 6.96f, 2.50f, &NACA_2412, UP, 0.20f), // left wing
-    Wing({wing_offset, 0.0f, +2.7f}, 6.96f, 2.50f, &NACA_2412, UP, 0.20f), // right wing
-    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
-    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 0.15f) // rudder
+    // Przykładowe skrzydło
+    Wing({ wing_offset, 0.0f, -2.7f }, 10.0f, 2.5f, &NACA_2412, UP, 0.20f),
+    Wing({ wing_offset, 0.0f, +2.7f }, 10.0f, 2.50f, &NACA_2412, UP, 0.20f), // right wing
+    // Dodaj więcej skrzydeł według potrzeb
 };
+
+glm::mat3 testInertia = {
+    { 10000.0f, 0.0f, 0.0f },
+    { 0.0f, 20000.0f, 0.0f },
+    { 0.0f, 0.0f, 30000.0f }
+};
+
+
+Airplane mainAirplane(mass, mainEngine, testInertia, wings);
 
 
 
@@ -223,6 +306,7 @@ void windowResizeCallback(GLFWwindow* window, int width, int height) {
 
 
 //funkcja -> do przeniesienia w osobny plik i klasę odpowiedzialną za dalsze modelowanie samolotu
+/*
 void drawAirplane(const glm::mat4 &M) {
 
     glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
@@ -247,7 +331,7 @@ void drawAirplane(const glm::mat4 &M) {
     glDisableVertexAttribArray(sp->a("vertex"));
     glDisableVertexAttribArray(sp->a("normal"));
     glDisableVertexAttribArray(sp->a("texCoord0"));
-}
+}*/
 
 //procedura do obsługi ruchu kamerą
 void updateCameraPosition() {
@@ -284,16 +368,18 @@ void initOpenGLProgram(GLFWwindow *window) {
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_movement_x) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    glm::mat4 V;
 
     if (freecam) {
         updateCameraPosition();
+        V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
     } else {
-        cameraPos = glm::vec3(0.0f, 0.0f, 200.0f);
-        cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-        // cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+        glm::vec3 planeCamPos = mainAirplane.position + mainAirplane.orientation * glm::vec3(-200.0f, 10.0f, 0.0f);
+        glm::vec3 planeCamlookAtPoint = mainAirplane.position;
+        glm::vec3 planeCamUp = mainAirplane.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
+        V = glm::lookAt(planeCamPos, planeCamlookAtPoint, planeCamUp);
     }
-
-    glm::mat4 V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
     glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
@@ -311,7 +397,8 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
     Mplane = glm::rotate(Mplane, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));
     Mplane = glm::rotate(Mplane, angle_x, glm::vec3(0.0f, 1.0f, 0.0f));
     Mplane = glm::translate(Mplane, glm::vec3(given_movement_x, 0.0f, 0.0f));
-    drawAirplane(Mplane);
+    // drawAirplane(Mplane);
+    mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, tex0, tex1);
 
     glfwSwapBuffers(window);
 }

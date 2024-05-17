@@ -22,7 +22,7 @@ void RigidBody::add_force_at_point(const glm::vec3 &force, const glm::vec3 &poin
 
 void RigidBody::UpdateBody(float deltaTime) {
 
-    // calculating the position of the model using, a = F / M; V = a * deltaT; S = V * T; 
+    // calculating the position of the model using, a = F / M; V = a / deltaT; S = v / T; 
     glm::vec3 acceleration = mw_force / mass;
     acceleration.y -= G;
     velocity += acceleration * deltaTime;
@@ -32,4 +32,19 @@ void RigidBody::UpdateBody(float deltaTime) {
     angular_velocity += body_space_inertia * (mb_torque - glm::cross(angular_velocity, inertia * angular_velocity)) * deltaTime; // 2nd Newton's principle of rotational dynamics
     orientation += (orientation * glm::quat(0.0f, angular_velocity)) * (deltaTime / 2);
     orientation = glm::normalize(orientation);
+    mw_force = glm::vec3(0.0f);
+    mb_torque = glm::vec3(0.0f);
+}
+
+void RigidBody::update(float deltaTime) {
+    glm::vec3 acceleration = mw_force / mass;
+    acceleration.y -= G;
+    velocity += acceleration * deltaTime;
+    position += velocity * deltaTime;
+    angular_velocity += body_space_inertia * (mb_torque - glm::cross(angular_velocity, inertia * angular_velocity)) * deltaTime;
+    orientation += (orientation * glm::quat(0.0f, angular_velocity)) * (0.5f * deltaTime);
+    orientation = glm::normalize(orientation);
+
+    mw_force = glm::vec3(0.0f);
+    mb_torque = glm::vec3(0.0f);
 }
