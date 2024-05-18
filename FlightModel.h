@@ -174,7 +174,7 @@ public:
             RigidBody(mass, inertia),
             engine(engine),
             wing_elements(wings),
-            input(0.0f),
+            input(1.0f),
             control_throttle(1.0f),
             flight_time(0.0f)
         {
@@ -235,7 +235,7 @@ public:
         glBindTexture(GL_TEXTURE_2D, tex0);
 
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, tex1); // mo¿na rozwin¹æ potem o inne mapowania
+        glBindTexture(GL_TEXTURE_2D, tex1); // moÂ¿na rozwinÂ¹Ã¦ potem o inne mapowania
 
         glDrawArrays(GL_TRIANGLES, 0, airplaneMesh->vertices.size());
 
