@@ -304,35 +304,6 @@ void windowResizeCallback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-
-//funkcja -> do przeniesienia w osobny plik i klasę odpowiedzialną za dalsze modelowanie samolotu
-/*
-void drawAirplane(const glm::mat4 &M) {
-
-    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
-
-    glEnableVertexAttribArray(sp->a("vertex"));
-    glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh.vertices.data());
-
-    glEnableVertexAttribArray(sp->a("normal"));
-    glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh.normals.data());
-
-    glEnableVertexAttribArray(sp->a("texCoord0"));
-    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, airplaneMesh.texCoords.data());
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex0);
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, tex1); //można rozwinąć potem o inne mapowania
-
-    glDrawArrays(GL_TRIANGLES, 0, airplaneMesh.vertices.size());
-
-    glDisableVertexAttribArray(sp->a("vertex"));
-    glDisableVertexAttribArray(sp->a("normal"));
-    glDisableVertexAttribArray(sp->a("texCoord0"));
-}*/
-
 //procedura do obsługi ruchu kamerą
 void updateCameraPosition() {
     float velocity = cameraSpeed * delta_time;
