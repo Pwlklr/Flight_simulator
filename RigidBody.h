@@ -21,7 +21,7 @@
 class RigidBody {
 private:
     glm::vec3 mw_force{}; // model's force in world space
-    glm::vec3 mb_torque{}; // model's torque in bodu space
+    glm::vec3 mb_torque{}; // model's torque in body space
 
 public:
     float mass;                                 // mass of the body in kg
@@ -45,11 +45,12 @@ public:
     glm::vec3 get_point_velocity(const glm::vec3 &point);       // calculates the sum of angular velocity and the velocity of a point in body space
     void add_relative_force(const glm::vec3 &force);            // used to simulate forces that are not applied at a specific point (mostly used for calculating the thrust vector effect on the whole body). Used for translation, doesnt affect the body's rotation
     void add_force_at_point(const glm::vec3 &force, const glm::vec3 &point); // adds force and torque to the accumulators m_force and torque used to calculate the resulant force on the entire body. Mostly for rotation
+    void add_torque(const glm::vec3 &torque);
     glm::vec3 getForce() { return mw_force; }
     glm::vec3 getTorque() { return mb_torque; }
 
 
-    virtual void UpdateBody(float deltaTime); // updates the position and orientation of the whole body
+    virtual void UpdateBody(float deltaTime, float pitch, float roll, float yaw); // updates the position and orientation of the whole body
     virtual void update(float deltaTime); // updates the position and orientation of the whole body
 };
 

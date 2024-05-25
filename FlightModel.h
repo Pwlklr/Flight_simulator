@@ -3,6 +3,8 @@
 #include <fstream>
 #include "RigidBody.h"
 #include "ModelLoader.h"
+#include "shaderprogram.h"
+#include "constants.h"
 
 bool logFlight = true;
 
@@ -11,13 +13,16 @@ namespace Atmosphere { // based on International Standard Atmosphere (ISA)
 
 // get temperture in kelvin
 float get_air_temperature(float altitude) {
-    assert(0.0f <= altitude && altitude <= 11000.0f);
+    // assert(0.0f <= altitude && altitude <= 11000.0f);
+    glm::clamp(altitude, 0.0f, 11000.0f);
+
     return 288.15f - 0.0065f * altitude;
 }
 
 // only accurate for altitudes < 11km
 float get_air_density(float altitude) {
-    assert(0.0f <= altitude && altitude <= 11000.0f);
+     // assert(0.0f <= altitude && altitude <= 11000.0f);
+    glm::clamp(altitude, 0.0f, 11000.0f);
     float temperature = get_air_temperature(altitude);
     float pressure = 101325.0f * std::pow(1 - 0.0065f * (altitude / 288.15f), 5.25f);
     return 0.00348f * (pressure / temperature);
@@ -154,13 +159,13 @@ public:
 };
 
 struct Engine {
-    float throttle = 1.0f, thrust; // thrust is constant, throttle is in the range of [0, 1]
+    float thrust; // thrust is constant, throttle is in the range of [0, 1]
 
     Engine(float thrust) :
             thrust(thrust) {}
 
-    void apply_force(RigidBody *rigid_body, float control_throttle) {
-        rigid_body->add_relative_force(FORWARD * (control_throttle * thrust)); // thrust is applied to the center of gravity and does not produce torque
+    void apply_force(RigidBody *rigid_body, float throttle) {
+        rigid_body->add_relative_force(FORWARD * (throttle * thrust)); // thrust is applied to the center of gravity and does not produce torque
     }
 };
 
@@ -168,15 +173,18 @@ class Airplane : public RigidBody {
 public:
     Engine engine;
     std::vector<Wing> wing_elements;
-    float input, control_throttle, flight_time;
+    float input, flight_time, throttle, pitch, roll, yaw;
 
     Airplane(float mass, const Engine &engine, const glm::mat3 &inertia, const std::vector<Wing> &wings) :
             RigidBody(mass, inertia),
             engine(engine),
             wing_elements(wings),
             input(0.0f),
-            control_throttle(1.0f),
-            flight_time(0.0f)
+            flight_time(0.0f),
+            throttle(0.425f),
+            pitch(0.0f),
+            roll(0.0f),
+            yaw(0.0f)
         {
             // this->mass = mass;
             // this->inertia = inertia;
@@ -194,11 +202,11 @@ public:
             for (Wing &wing : wing_elements) {
                 wing.calculate_forces(this, delta_time, input);
             }
-            engine.apply_force(this, control_throttle);
+            engine.apply_force(this, throttle);
 
             log_file << flight_time << " pos " << position.y << " speed " << glm::length(velocity) << " force " << getForce().x << " force " << getForce().y << " force " << getForce().z << " torque " << getTorque().x << " torque " << getTorque().y << " torque " << getTorque().z << "\n";
 
-            RigidBody::UpdateBody(delta_time);
+            RigidBody::UpdateBody(delta_time, pitch, roll, yaw);
 
 
         } else {
@@ -207,8 +215,8 @@ public:
                 wing.calculate_forces(this, delta_time, input);
             }
 
-            engine.apply_force(this, control_throttle);
-            RigidBody::UpdateBody(delta_time);
+            engine.apply_force(this, throttle);
+            RigidBody::UpdateBody(delta_time, pitch, roll, yaw);
         }
     }
 
