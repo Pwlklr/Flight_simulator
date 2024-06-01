@@ -33,7 +33,6 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include <assimp/postprocess.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <map>
 
 #include "ModelLoader.h"
 #include "constants.h"
@@ -44,11 +43,8 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "FlightModel.h"
 
 
-float delta_time = 0; //zmienna globalna określająca czas między klatkami
 
-float speed_x = 0;
-float speed_y = 0;
-float movement_x = 0;
+float delta_time = 0; //zmienna globalna określająca czas między klatkami
 
 //zmienna wykorzystywana do zmiany rozmiaru okna
 float aspectRatio = 1.77777778;
@@ -71,12 +67,12 @@ bool is_w_pressed = false;
 bool is_s_pressed = false;
 bool is_a_pressed = false;
 bool is_d_pressed = false;
+bool is_q_pressed = false;
+bool is_e_pressed = false;
 bool is_space_pressed = false;
 bool is_lctrl_pressed = false;
-bool is_esc_pressed = false;
 bool is_lshift_pressed = false;
-
-float throttle = 1.0f, roll = 0.0f;
+bool is_esc_pressed = false;
 
 
 ShaderProgram* sp;
@@ -85,27 +81,53 @@ ShaderProgram* sp;
 GLuint tex0;
 GLuint tex1;
 
-Airfoil NACA_2412(NACA_2412_data);
-Airfoil NACA_0012(NACA_0012_data);
 
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
 
+const float mass = 10000.0f;
+const float thrust = 75000.0f;
+float throttle = 1.0f;
+
+const float wing_offset = -1.0f;
+const float tail_offset = -6.6f;
+
+Airfoil NACA_2412(NACA_2412_data);
+Airfoil NACA_0012(NACA_0012_data);
+
+Engine mainEngine(thrust);
+
 std::vector<Wing> wings = {
-    Wing({ 0.0f, 0.0f, -2.7f }, 6.96f, 2.50f, &NACA_2412, UP, 0.20f), // left wing
-    Wing({ 0.0f, 0.0f, +2.7f }, 6.96f, 2.50f, &NACA_2412, UP, 0.20f), // right wing
-    // Wing({ -6.6f, -0.1f, 0.0f }, 3.12f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
-    // Wing({ -6.6f, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 0.15f) // rudder
+    // Przykładowe skrzydło
+    Wing({ wing_offset, 0.0f, -5.7f }, 10.0f, 2.5f, &NACA_2412, UP, 0.20f), // left wing
+    Wing({ wing_offset, 0.0f, +5.7f }, 10.0f, 2.50f, &NACA_2412, UP, 0.20f), // right wing
+    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
+    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 0.15f), // rudder
+    // Dodaj więcej skrzydeł według potrzeb
 };
-Engine simpleEngine(50000);
 
+std::vector<Wing> wings2 = {
+    Wing({ wing_offset, 0.0f, -2.0f }, 3.80f, 1.26f, &NACA_0012, UP, 1.0f), // left aileron
+    Wing({ wing_offset, 0.0f, 2.0f }, 3.80f, 1.26f, &NACA_0012, UP, 1.0f), // right aileron
+    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
+    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 1.0f), // rudder
+    Wing({ wing_offset, 0.0f, -2.7f }, 10.0f, 2.5f, &NACA_2412, UP, 0.20f), // left wing
+    Wing({ wing_offset, 0.0f, +2.7f }, 10.0f, 2.50f, &NACA_2412, UP, 0.2f), // right wing
+};
 
-glm::mat3 testinertia(
-        40000.0f, 0.0f, 0.0f,
-        0.0f, 100000.0f, 0.0f,
-        0.0f, 0.0f, 200000.0f);
+glm::mat3 giveninertia = {
+    48531.0f, -1320.0f, 0.0f,
+    -1320.0f, 256608.0f, 0.0f,
+    0.0f, 0.0f, 211333.0f
+};
 
-Airplane mainAirplane(1000.0f, simpleEngine, testinertia, wings);
+glm::mat3 testinertia = {
+    10000.0f, -1320.0f, 0.0f,
+    -1320.0f, 20000.0f, 0.0f,
+    0.0f, 0.0f, 30000.0f
+}; 
 
+Airplane mainAirplane(mass, mainEngine, testinertia, wings);
+Airplane testAirplane(mass, mainEngine, testinertia, wings);
 
 
 
@@ -140,10 +162,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     float velocity = cameraSpeed * delta_time;
 
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_LEFT) speed_x = -PI;
-        if (key == GLFW_KEY_RIGHT) speed_x = PI;
-        if (key == GLFW_KEY_UP) speed_y = PI;
-        if (key == GLFW_KEY_DOWN) speed_y = -PI;
+
         // if (key == GLFW_KEY_W) movement_x = 150;
         // if (key == GLFW_KEY_S) movement_x = -150;    
         if (key == GLFW_KEY_F) freecam = !freecam;
@@ -151,16 +170,12 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_S) is_s_pressed = true;
         if (key == GLFW_KEY_A) is_a_pressed = true;
         if (key == GLFW_KEY_D) is_d_pressed = true;
+        if (key == GLFW_KEY_Q) is_q_pressed = true;
+        if (key == GLFW_KEY_E) is_e_pressed = true;
+        if (key == GLFW_KEY_X) mainAirplane.fireMissile();
         if (key == GLFW_KEY_SPACE) is_space_pressed = true;
         if (key == GLFW_KEY_LEFT_CONTROL) is_lctrl_pressed = true;
         if (key == GLFW_KEY_LEFT_SHIFT) is_lshift_pressed = true;
-
-        // if (key == GLFW_KEY_A && !freecam) mainAirplane.roll(-1);
-        // if (key == GLFW_KEY_D && !freecam) mainAirplane.roll(1);
-        // if (key == GLFW_KEY_LEFT_SHIFT && !freecam) mainAirplane.pitch(1);
-        // if (key == GLFW_KEY_LEFT_CONTROL && !freecam) mainAirplane.pitch(-1);
-        // if (key == GLFW_KEY_Q && !freecam) mainAirplane.yaw(-1);
-        // if (key == GLFW_KEY_E && !freecam) mainAirplane.yaw(1);
 
         if (key == GLFW_KEY_ESCAPE) {
             is_esc_pressed = !is_esc_pressed;
@@ -174,15 +189,12 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     }
 
     if (action == GLFW_RELEASE) {
-        if (key == GLFW_KEY_LEFT) speed_x = 0;
-        if (key == GLFW_KEY_RIGHT) speed_x = 0;
-        if (key == GLFW_KEY_UP) speed_y = 0;
-        if (key == GLFW_KEY_DOWN) speed_y = 0;
-
         if (key == GLFW_KEY_W) is_w_pressed = false;
         if (key == GLFW_KEY_S) is_s_pressed = false;
         if (key == GLFW_KEY_A) is_a_pressed = false;
         if (key == GLFW_KEY_D) is_d_pressed = false;
+        if (key == GLFW_KEY_Q) is_q_pressed = false;
+        if (key == GLFW_KEY_E) is_e_pressed = false;
         if (key == GLFW_KEY_SPACE) is_space_pressed = false;
         if (key == GLFW_KEY_LEFT_CONTROL) is_lctrl_pressed = false;
         if (key == GLFW_KEY_LEFT_SHIFT) is_lshift_pressed = false;
@@ -275,40 +287,48 @@ void drawScene(GLFWwindow *window) {
         updateCameraPosition();
         V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
     } else {
-        // Kod śledzenia samolotu
-        glm::vec3 airplanePos = mainAirplane.position;
-        // Umieść kamerę za samolotem i nieco powyżej, patrząc w jego kierunku
-        V = glm::lookAt(airplanePos + glm::vec3(-200.0f, 20.0f, 0.0f), airplanePos, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::vec3 planeCamPos = mainAirplane.position + mainAirplane.orientation * glm::vec3(-200.0f, 10.0f, 0.0f);
+        glm::vec3 planeCamlookAtPoint = mainAirplane.position;
+        glm::vec3 planeCamUp = mainAirplane.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
+        V = glm::lookAt(planeCamPos, planeCamlookAtPoint, planeCamUp);
+    }
+
+    if (is_w_pressed) {
+        throttle += 0.001;
+        throttle = glm::clamp(throttle, 0.0f, 1.0f);
+        mainAirplane.control_throttle = throttle;
+    } else if (is_s_pressed) {
+        throttle -= 0.001;
+        throttle = glm::clamp(throttle, 0.0f, 1.0f);
+        mainAirplane.control_throttle = throttle;
+    }
+
+    if (is_a_pressed) {
+        mainAirplane.aileron = -1;
+    } else if (is_d_pressed) {
+        mainAirplane.aileron = 1;
+    } else {
+        mainAirplane.aileron = 0;
+    }
+    if (is_q_pressed) {
+        mainAirplane.rudder = -1;
+    } else if (is_e_pressed) {
+        mainAirplane.rudder = 1;
+    } else {
+        mainAirplane.rudder = 0;
+    }
+
+    if (is_lshift_pressed) {
+        mainAirplane.elevator = 1;
+    } else if (is_lctrl_pressed) {
+        mainAirplane.elevator = -1;
+    } else {
+        mainAirplane.elevator = 0;
     }
 
     glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
     glm::vec4 lp = glm::vec4(0, 6, 0, 1);
-
-    if (is_w_pressed) {
-        throttle += 0.001;
-        throttle = glm::clamp(throttle, 0.0f, 1.0f);
-        mainAirplane.throttle = throttle;
-    }
-    else if (is_s_pressed) {
-        throttle -= 0.001;
-        throttle = glm::clamp(throttle, 0.0f, 1.0f);
-        mainAirplane.throttle = throttle;
-    }
-    if (is_a_pressed) {
-        roll = -1.0f;
-        mainAirplane.roll = roll;
-    } else if (is_d_pressed) {
-        roll = 1.0f;
-        mainAirplane.roll = roll;
-    }
-    if (is_lctrl_pressed) {
-        roll = -1.0f;
-        mainAirplane.pitch = pitch;
-    } else if (is_lshift_pressed) {
-        roll = 1.0f;
-        mainAirplane.pitch = pitch;
-    }
 
     sp->use();
     glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
@@ -319,7 +339,11 @@ void drawScene(GLFWwindow *window) {
     glUniform1f(sp->u("lightIntensity"), 1.25f);
     
 
+    mainAirplane.update(delta_time);
     mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, tex0, tex1);
+    
+    
+    testAirplane.drawAirplane(0, sp, &airplaneMesh, tex0, tex1);
 
     glfwSwapBuffers(window);
 }
@@ -363,17 +387,15 @@ int main(void)
     initOpenGLProgram(window); //Operacje inicjujące
 
     //Główna pętla
-    float angle_x = 0; //Aktualny kąt obrotu obiektu
-    float angle_y = 0; //Aktualny kąt obrotu obiektu
-    float given_movement_x = 0;
+    float prev_time = glfwGetTime();
     glfwSetTime(0); //Zeruj timer
     while (!glfwWindowShouldClose(window)) //Tak długo jak okno nie powinno zostać zamknięte
     {
-        delta_time += glfwGetTime();
-        angle_x += speed_x * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
-        angle_y += speed_y * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
-        given_movement_x += movement_x * glfwGetTime();
-        glfwSetTime(0); //Zeruj timer
+        float current_time = glfwGetTime();
+        delta_time = current_time - prev_time;
+        prev_time = current_time;
+
+        //glfwSetTime(0); //Zeruj timer
         drawScene(window); // Wykonaj procedurę rysującą
         glfwPollEvents(); //Wykonaj procedury callback w zalezności od zdarzeń jakie zaszły.
     }

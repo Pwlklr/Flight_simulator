@@ -3,26 +3,21 @@
 #include <fstream>
 #include "RigidBody.h"
 #include "ModelLoader.h"
-#include "shaderprogram.h"
-#include "constants.h"
 
-bool logFlight = true;
+bool logFlight = false;
 
 
 namespace Atmosphere { // based on International Standard Atmosphere (ISA)
 
 // get temperture in kelvin
 float get_air_temperature(float altitude) {
-    // assert(0.0f <= altitude && altitude <= 11000.0f);
-    glm::clamp(altitude, 0.0f, 11000.0f);
-
+    assert(0.0f <= altitude && altitude <= 11000.0f);
     return 288.15f - 0.0065f * altitude;
 }
 
 // only accurate for altitudes < 11km
 float get_air_density(float altitude) {
-     // assert(0.0f <= altitude && altitude <= 11000.0f);
-    glm::clamp(altitude, 0.0f, 11000.0f);
+    assert(0.0f <= altitude && altitude <= 11000.0f);
     float temperature = get_air_temperature(altitude);
     float pressure = 101325.0f * std::pow(1 - 0.0065f * (altitude / 288.15f), 5.25f);
     return 0.00348f * (pressure / temperature);
@@ -100,23 +95,34 @@ private:
     float area; // wing's surface area
     float chord; // length of the chord
     float wingspan;
-    glm::vec3 normal; // normal vector to the wing
+    glm::vec3 initial_normal; // normal vector to the wing
     float wing_aspect_ratio;
     float flap_ratio; // [0,1]
+    float control_input = 0.0f; // [-1, 1]
+
 
 public:
-    Wing(const glm::vec3 &position, float span, float chord, const Airfoil *airfoil, const glm::vec3 &normal, float flap_ratio) :
+    glm::vec3 normal; // normal vector to the wing
+
+    Wing(const glm::vec3 &_position, float span, float chord, const Airfoil *airfoil, const glm::vec3 &normal, float flap_ratio) :
             airfoil(airfoil),
-            center_of_pressure(position),
+            center_of_pressure(_position),
             area(span * chord),
             chord(chord),
             wingspan(span),
+            initial_normal(normal),
             normal(normal),
             wing_aspect_ratio(span * span / area),
-            flap_ratio(flap_ratio) {}
+            flap_ratio(flap_ratio),
+            control_input(0.0f)
+            {}
 
-    void calculate_forces(RigidBody *rigid_body, float delta_time, float control_input) {
-        std::ofstream wingDebug("wingDebug.txt", std::ios::app);
+    void setControlInput(float _control_input) {
+        this->control_input = _control_input;
+    }
+
+    void calculate_forces(RigidBody *rigid_body, float delta_time) {
+        // std::ofstream wingDebug("wingDebug.txt", std::ios::app);
 
         glm::vec3 wing_velocity = rigid_body->get_point_velocity(center_of_pressure);
 
@@ -124,19 +130,17 @@ public:
 
         glm::vec3 drag_direction = glm::normalize(-wing_velocity); // direction of drag is perpendicular to velocity
 
-        wingDebug << " wing_velocity " << speed << " drag_direction " << drag_direction.x << " drag_direction " << drag_direction.y << " drag_direction " << drag_direction.z << "\n";
-
         glm::vec3 lift_direction = glm::normalize(glm::cross(glm::cross(drag_direction, normal), drag_direction)); // glm::vec3 lift_direction = glm::normalize(glm::cross(drag_direction, normal)); <- requires further testing
 
-        wingDebug << " wing_velocity " << speed << " drag_direction " << drag_direction.x << " drag_direction " << drag_direction.y << " drag_direction " << drag_direction.z << 
-        " lift_direction " << lift_direction.x << " lift_direction " << lift_direction.y << " lift_direction " << lift_direction.z << "\n";
+        //  << " wing_velocity " << speed << " drag_direction " << drag_direction.x << " drag_direction " << drag_direction.y << " drag_direction " << drag_direction.z << 
+        // " lift_direction " << lift_direction.x << " lift_direction " << lift_direction.y << " lift_direction " << lift_direction.z << "\n";
 
 
         float angle_of_attack = glm::degrees(std::asin(glm::dot(drag_direction, normal))); // angle between chord line and air flow
 
         std::pair<float, float> airfoilData = airfoil->getAirfoilDataInterpolated(angle_of_attack); // .first: lift_coeff, .second drag_coeff
 
-        wingDebug << "angleofattack " << angle_of_attack << " lc " << airfoilData.first << " dc " << airfoilData.second << "\n";
+        // wingDebug << "normal" << normal.x << " " << normal.y << " " << normal.z << " initial " << initial_normal.x << " " << initial_normal.y << " " << initial_normal.z << "\n";
 
         if (flap_ratio) {
             float delta_lift_coeff = sqrt(flap_ratio) * airfoil->lift_max * control_input; // lift coefficient changes based on flap deflection
@@ -145,7 +149,7 @@ public:
 
         // induced drag, increases with lift
         float induced_drag_coeff = (std::pow(airfoilData.first, 2)) / (PI * wing_aspect_ratio); // (PI * wing_aspect_ratio * efficiency_ratio) <- test?
-        airfoilData.second += induced_drag_coeff;
+        airfoilData.second += induced_drag_coeff * 100;
 
         float air_density = Atmosphere::get_air_density(rigid_body->position.y);
 
@@ -155,6 +159,7 @@ public:
         glm::vec3 drag = drag_direction * airfoilData.second * dynamic_pressure;
 
         rigid_body->add_force_at_point(lift + drag, center_of_pressure);
+        // normal = initial_normal;
     }
 };
 
@@ -162,67 +167,35 @@ struct Engine {
     float thrust; // thrust is constant, throttle is in the range of [0, 1]
 
     Engine(float thrust) :
-            thrust(thrust) {}
+            thrust(thrust)
+    {}
 
-    void apply_force(RigidBody *rigid_body, float throttle) {
-        rigid_body->add_relative_force(FORWARD * (throttle * thrust)); // thrust is applied to the center of gravity and does not produce torque
+    void apply_force(RigidBody *rigid_body, float control_throttle) {
+        rigid_body->add_relative_force(FORWARD * (control_throttle * thrust)); // thrust is applied to the center of gravity and does not produce torque
+    }
+    void apply_force(RigidBody *rigid_body) { // used for missle simulation, no throttle control
+        rigid_body->add_relative_force(FORWARD * thrust); // thrust is applied to the center of gravity and does not produce torque
     }
 };
 
-class Airplane : public RigidBody {
+class Missile : public RigidBody {
 public:
     Engine engine;
-    std::vector<Wing> wing_elements;
-    float input, flight_time, throttle, pitch, roll, yaw;
+    float flight_time, max_flight_time;
 
-    Airplane(float mass, const Engine &engine, const glm::mat3 &inertia, const std::vector<Wing> &wings) :
-            RigidBody(mass, inertia),
+    Missile(float mass, const Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity, float max_flight_time = 1000.0f) :
+            RigidBody(mass, inertia, initial_position, initial_orientation, initial_velocity),
             engine(engine),
-            wing_elements(wings),
-            input(0.0f),
             flight_time(0.0f),
-            throttle(0.425f),
-            pitch(0.0f),
-            roll(0.0f),
-            yaw(0.0f)
-        {
-            // this->mass = mass;
-            // this->inertia = inertia;
-        }
+            max_flight_time(max_flight_time) {}
 
     void update(float delta_time) {
-
-        if (logFlight) { // made for debugging this shit
-
-            std::ofstream log_file("log_file.txt", std::ios::app);
-            flight_time += delta_time;
-
-            log_file << flight_time << " pos " << position.y << " speed " << glm::length(velocity) << " force " << getForce().x << " force " << getForce().y << " force " << getForce().z << "\n";
-
-            for (Wing &wing : wing_elements) {
-                wing.calculate_forces(this, delta_time, input);
-            }
-            engine.apply_force(this, throttle);
-
-            log_file << flight_time << " pos " << position.y << " speed " << glm::length(velocity) << " force " << getForce().x << " force " << getForce().y << " force " << getForce().z << " torque " << getTorque().x << " torque " << getTorque().y << " torque " << getTorque().z << "\n";
-
-            RigidBody::UpdateBody(delta_time, pitch, roll, yaw);
-
-
-        } else {
-
-            for (Wing &wing : wing_elements) {
-                wing.calculate_forces(this, delta_time, input);
-            }
-
-            engine.apply_force(this, throttle);
-            RigidBody::UpdateBody(delta_time, pitch, roll, yaw);
-        }
+        engine.apply_force(this);
+        RigidBody::UpdateBody(delta_time);
+        flight_time += delta_time;
     }
 
-    void drawAirplane(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, GLuint tex0, GLuint tex1) {
-
-        // update(delta_time);
+    void drawMissile(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, GLuint tex0, GLuint tex1) {
 
         glm::mat4 M = glm::mat4(1.0f);
         M = glm::translate(M, position);
@@ -243,9 +216,144 @@ public:
         glBindTexture(GL_TEXTURE_2D, tex0);
 
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, tex1); // mo¿na rozwin¹æ potem o inne mapowania
+        glBindTexture(GL_TEXTURE_2D, tex1); // mozna rozwinac potem o inne mapowania
 
         glDrawArrays(GL_TRIANGLES, 0, airplaneMesh->vertices.size());
+
+        glDisableVertexAttribArray(sp->a("vertex"));
+        glDisableVertexAttribArray(sp->a("normal"));
+        glDisableVertexAttribArray(sp->a("texCoord0"));
+    }
+};
+
+class Airplane : public RigidBody {
+public:
+    Engine engine;
+    std::vector<Missile> missiles;
+    std::vector<Wing> wing_elements;
+    float input, control_throttle, flight_time;
+    short aileron, rudder, elevator;
+    Engine missileEngine;
+
+    Airplane(float mass, const Engine &engine, const glm::mat3 &inertia, const std::vector<Wing> &wings) :
+            RigidBody(mass, inertia),
+            engine(engine),
+            wing_elements(wings),
+            input(1.0f),
+            control_throttle(1.0f),
+            flight_time(0.0f),
+            aileron(0),
+            rudder(0),
+            elevator(0),
+            missileEngine(10000.0f)
+        {}
+
+    void fireMissile() {
+        glm::vec3 missile_position = position + (orientation * glm::vec3(0.0f, 0.0f, -1.0f)); // Przyk³adowe miejsce startu rakiety
+        glm::vec3 missile_velocity = velocity + (orientation * glm::vec3(0.0f, 0.0f, -10.0f)); // Przyk³adowa prêdkoœæ pocz¹tkowa rakiety
+        Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, orientation, missile_velocity);
+        missiles.push_back(new_missile);
+    }
+
+    void update(float delta_time) {
+
+        if (logFlight) { // made for debugging this shit
+
+            std::ofstream log_file("log_file.txt", std::ios::app);
+            flight_time += delta_time;
+
+            log_file << flight_time << " pos " << position.y << " speed " << glm::length(velocity) << " force " << getForce().x << " force " << getForce().y << " force " << getForce().z << "\n";
+
+            for (Wing &wing : wing_elements) {
+                wing.calculate_forces(this, delta_time);
+            }
+            engine.apply_force(this, control_throttle);
+
+            log_file << flight_time << " pos " << position.y << " speed " << glm::length(velocity) << " force " << getForce().x << " force " << getForce().y << " force " << getForce().z << " torque " << getTorque().x << " torque " << getTorque().y << " torque " << getTorque().z << "\n";
+
+            RigidBody::UpdateBody(delta_time);
+
+
+        } else {
+            // std::ofstream log_file("log_file.txt", std::ios::app);
+            // log_file << aileron << " " << elevator << " " << rudder << "\n";
+
+           if (aileron == -1) {
+                wing_elements[0].setControlInput(-1);
+               wing_elements[1].setControlInput(1);
+            } else if (aileron == 1) {
+               wing_elements[0].setControlInput(1);
+                wing_elements[1].setControlInput(-1);
+            } else {
+                wing_elements[0].setControlInput(0.0f);
+                wing_elements[1].setControlInput(0.0f);
+            }
+
+            if (elevator == -1) {
+                wing_elements[2].setControlInput(-1);
+            } else if (elevator == 1) {
+                wing_elements[2].setControlInput(1);
+            } else {
+                wing_elements[2].setControlInput(0.0f);
+            }
+
+            if (rudder == -1) {
+                wing_elements[3].setControlInput(-1);
+            } else if (rudder == 1) {
+                wing_elements[3].setControlInput(1);
+            } else {
+                wing_elements[3].setControlInput(0.0f);
+            }
+
+            for (Wing &wing : wing_elements) {
+                wing.calculate_forces(this, delta_time);
+            }
+
+            engine.apply_force(this, control_throttle);
+
+            // Update rockets
+            for (auto it = missiles.begin(); it != missiles.end();) {
+                it->update(delta_time);
+                if (it->flight_time > it->max_flight_time) {
+                    it = missiles.erase(it);
+                } else {
+                    it++;
+                }
+            }
+
+            RigidBody::UpdateBody(delta_time);
+        }
+    }
+
+    void drawAirplane(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, GLuint tex0, GLuint tex1) {
+
+        glm::mat4 M = glm::mat4(1.0f);
+        M = glm::translate(M, position);
+        M = M * glm::mat4_cast(orientation); // changing the quaternion orientation into mat4
+
+        glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+
+        glEnableVertexAttribArray(sp->a("vertex"));
+        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh->vertices.data());
+
+        glEnableVertexAttribArray(sp->a("normal"));
+        glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh->normals.data());
+
+        glEnableVertexAttribArray(sp->a("texCoord0"));
+        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, airplaneMesh->texCoords.data());
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex0);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, tex1); // mozna rozwinac potem o inne mapowania
+
+        glDrawArrays(GL_TRIANGLES, 0, airplaneMesh->vertices.size());
+
+        // Drawing rockets
+        for (Missile &missile : missiles) {
+            missile.drawMissile(delta_time, sp, airplaneMesh, tex0, tex1);
+        }
 
         glDisableVertexAttribArray(sp->a("vertex"));
         glDisableVertexAttribArray(sp->a("normal"));

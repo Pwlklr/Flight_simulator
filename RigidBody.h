@@ -9,6 +9,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 #include <iostream>
 #include <numeric>
 #include <type_traits>
@@ -21,7 +22,7 @@
 class RigidBody {
 private:
     glm::vec3 mw_force{}; // model's force in world space
-    glm::vec3 mb_torque{}; // model's torque in body space
+    glm::vec3 mb_torque{}; // model's torque in bodu space
 
 public:
     float mass;                                 // mass of the body in kg
@@ -33,12 +34,20 @@ public:
 
     RigidBody(float mass, const glm::mat3 &inertia) :
             mass(mass),
-            position(glm::vec3(0.0f, 6000.0f, 0.0f)),
+            position(glm::vec3(0.0f, 3000.0f, 0.0f)),
             orientation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)),
-            velocity(glm::vec3(600.0f / 3.6f, 0.0f, 0.0f)),
+            velocity(glm::vec3(500.0f / 3.6f, 0.0f, 0.0f)),
             angular_velocity(glm::vec3(0.0f)),
             inertia(inertia),
             body_space_inertia(glm::inverse(inertia)) { }
+    RigidBody(float mass, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity) : // this constructor will be used for the Missle class
+            mass(mass),
+            position(glm::vec3(0.0f, 3000.0f, 0.0f)),
+            orientation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)),
+            velocity(glm::vec3(500.0f / 3.6f, 0.0f, 0.0f)),
+            angular_velocity(glm::vec3(0.0f)),
+            inertia(inertia),
+            body_space_inertia(glm::inverse(inertia)) {}
 
     glm::vec3 vector_to_world(const glm::vec3 &direction); // transforms the direction vector from body space to world space
     glm::vec3 vector_to_body(const glm::vec3 &direction); // transforms the direction vector from world space to body space
@@ -50,7 +59,7 @@ public:
     glm::vec3 getTorque() { return mb_torque; }
 
 
-    virtual void UpdateBody(float deltaTime, float pitch, float roll, float yaw); // updates the position and orientation of the whole body
+    virtual void UpdateBody(float deltaTime); // updates the position and orientation of the whole body
     virtual void update(float deltaTime); // updates the position and orientation of the whole body
 };
 
