@@ -23,7 +23,7 @@ float toonify(float nl, float ilosc_przedzialow) {
 
 void main(void) {
 
-        vec4 kd = texture(textureMap0,iTexCoord0);
+        vec4 kd = texture(textureMap0, iTexCoord0);
         vec4 ks = vec4(1,1,1,1);    
         // vec4 ks = kd / 3;
         // vec4 ks = texture(textureMap1,iTexCoord0);
