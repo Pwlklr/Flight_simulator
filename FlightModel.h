@@ -181,7 +181,7 @@ struct Engine {
 class Missile : public RigidBody {
 public:
     Engine engine;
-    float flight_time, max_flight_time;
+    float flight_time, max_flight_time, engine_time;
 
     Missile(float mass, const Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity, float max_flight_time = 1000.0f) :
             RigidBody(mass, inertia, initial_position, initial_orientation, initial_velocity),
@@ -199,7 +199,9 @@ public:
 
         glm::mat4 M = glm::mat4(1.0f);
         M = glm::translate(M, position);
-        M = M * glm::mat4_cast(orientation); // changing the quaternion orientation into mat4
+        M = M * glm::mat4_cast(orientation);
+        M = glm::rotate(M, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        M = glm::scale(M, glm::vec3(3.0f, 3.0f, 3.0f)); // changing the quaternion orientation into mat4
 
         glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 
@@ -231,7 +233,7 @@ public:
     Engine engine;
     std::vector<Missile> missiles;
     std::vector<Wing> wing_elements;
-    float input, control_throttle, flight_time;
+    float input, control_throttle, flight_time, missile_offset = 20.0f;
     short aileron, rudder, elevator;
     Engine missileEngine;
 
@@ -249,10 +251,11 @@ public:
         {}
 
     void fireMissile() {
-        glm::vec3 missile_position = position + (orientation * glm::vec3(0.0f, 0.0f, -1.0f)); // Przyk³adowe miejsce startu rakiety
-        glm::vec3 missile_velocity = velocity + (orientation * glm::vec3(0.0f, 0.0f, -10.0f)); // Przyk³adowa prêdkoœæ pocz¹tkowa rakiety
-        Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, orientation, missile_velocity);
+        glm::vec3 missile_position = this->position + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)) + glm::vec3(0.0f, -2.5f, missile_offset); // Przyk³adowe miejsce startu rakiety
+        glm::vec3 missile_velocity = this->velocity + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)); // Przyk³adowa prêdkoœæ pocz¹tkowa rakiety
+        Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, this->orientation, missile_velocity);
         missiles.push_back(new_missile);
+        missile_offset *= -1;
     }
 
     void update(float delta_time) {
@@ -290,9 +293,9 @@ public:
             }
 
             if (elevator == -1) {
-                wing_elements[2].setControlInput(-1);
-            } else if (elevator == 1) {
                 wing_elements[2].setControlInput(1);
+            } else if (elevator == 1) {
+                wing_elements[2].setControlInput(-1);
             } else {
                 wing_elements[2].setControlInput(0.0f);
             }
@@ -325,7 +328,7 @@ public:
         }
     }
 
-    void drawAirplane(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, GLuint tex0, GLuint tex1) {
+    void drawAirplane(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, Mesh *missileMesh, GLuint tex0, GLuint tex1) {
 
         glm::mat4 M = glm::mat4(1.0f);
         M = glm::translate(M, position);
@@ -352,7 +355,7 @@ public:
 
         // Drawing rockets
         for (Missile &missile : missiles) {
-            missile.drawMissile(delta_time, sp, airplaneMesh, tex0, tex1);
+            missile.drawMissile(delta_time, sp, missileMesh, tex0, tex1);
         }
 
         glDisableVertexAttribArray(sp->a("vertex"));

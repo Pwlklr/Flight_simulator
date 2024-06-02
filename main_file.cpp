@@ -83,6 +83,7 @@ GLuint tex1;
 
 
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
+Mesh missleMesh;
 
 const float mass = 10000.0f;
 const float thrust = 75000.0f;
@@ -270,10 +271,11 @@ void initOpenGLProgram(GLFWwindow *window) {
     sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl"); 
 
     tex0 = readTexture("F-16_Airframe_BaseColorFinalized.png");
-    tex1 = readTexture("/models/textures/sky.png");
+    tex1 = readTexture("rocket.jpg");
 
     ModelLoader loader;
     airplaneMesh = loader.loadModel("models/source/F-16.obj");
+    missleMesh = loader.loadModel("models/source/rocket.3ds");
 }
 
 
@@ -337,14 +339,13 @@ void drawScene(GLFWwindow *window) {
     glUniform1i(sp->u("textureMap0"), 0);
     glUniform1i(sp->u("textureMap1"), 1);
     glUniform1f(sp->u("lightIntensity"), 1.25f);
-    
 
+    testAirplane.drawAirplane(0, sp, &airplaneMesh, &missleMesh, tex0, tex1);
+
+    
     mainAirplane.update(delta_time);
-    mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, tex0, tex1);
+    mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, &missleMesh, tex0, tex1);
     
-    
-    testAirplane.drawAirplane(0, sp, &airplaneMesh, tex0, tex1);
-
     glfwSwapBuffers(window);
 }
 
@@ -391,7 +392,7 @@ int main(void)
     glfwSetTime(0); //Zeruj timer
     while (!glfwWindowShouldClose(window)) //Tak długo jak okno nie powinno zostać zamknięte
     {
-        float current_time = glfwGetTime();
+        float current_time = glfwGetTime(); 
         delta_time = current_time - prev_time;
         prev_time = current_time;
 

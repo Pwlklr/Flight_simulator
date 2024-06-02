@@ -42,9 +42,9 @@ public:
             body_space_inertia(glm::inverse(inertia)) { }
     RigidBody(float mass, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity) : // this constructor will be used for the Missle class
             mass(mass),
-            position(glm::vec3(0.0f, 3000.0f, 0.0f)),
-            orientation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)),
-            velocity(glm::vec3(500.0f / 3.6f, 0.0f, 0.0f)),
+            position(initial_position),
+            orientation(initial_orientation),
+            velocity(initial_velocity),
             angular_velocity(glm::vec3(0.0f)),
             inertia(inertia),
             body_space_inertia(glm::inverse(inertia)) {}
