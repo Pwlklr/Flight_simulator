@@ -43,7 +43,6 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "FlightModel.h"
 
 
-
 float delta_time = 0; //zmienna globalna określająca czas między klatkami
 
 //zmienna wykorzystywana do zmiany rozmiaru okna
@@ -51,11 +50,12 @@ float aspectRatio = 1.77777778;
 
 //zmienne globalne dotyczące kamery
 bool freecam = false;
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 200.0f);
+bool plane = false;
+glm::vec3 cameraPos = glm::vec3(0.0f, 3000.0f, 200.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 const glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-float cameraSpeed = 1.0f;
-float maxCamSpeed = 5.0f;
+float cameraSpeed = 150.0f;
+float maxCamSpeed = 500.0f;
 float mouseSensitivity = 0.09f;
 
 bool firstMouse = true;
@@ -80,16 +80,21 @@ ShaderProgram* sp;
 // Uchwyty tekstur - deklaracje globalne
 GLuint tex0;
 GLuint tex1;
+GLuint tex2;
+GLuint tex3;
 
 
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
 Mesh missleMesh;
+Mesh helicopterMesh;
+Mesh terrainMesh;
+Mesh rotorMesh;
 
 const float mass = 10000.0f;
 const float thrust = 75000.0f;
 float throttle = 1.0f;
 
-const float wing_offset = -1.0f;
+const float wing_offset = 2.15f;
 const float tail_offset = -6.6f;
 
 Airfoil NACA_2412(NACA_2412_data);
@@ -115,6 +120,13 @@ std::vector<Wing> wings2 = {
     Wing({ wing_offset, 0.0f, +2.7f }, 10.0f, 2.50f, &NACA_2412, UP, 0.2f), // right wing
 };
 
+std::vector<Wing> wings3 = {
+    Wing({ wing_offset, 0.0f, -2.7f }, 6.96f, 2.70f, &NACA_2412, UP, 0.20f), // left wing
+    Wing({ wing_offset, 0.0f, +2.7f }, 6.96f, 2.70f, &NACA_2412, UP, 0.20f), // right wing
+    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
+    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 0.15f), // rudder
+};
+
 glm::mat3 giveninertia = {
     48531.0f, -1320.0f, 0.0f,
     -1320.0f, 256608.0f, 0.0f,
@@ -127,8 +139,15 @@ glm::mat3 testinertia = {
     0.0f, 0.0f, 30000.0f
 }; 
 
-Airplane mainAirplane(mass, mainEngine, testinertia, wings);
+Airplane mainAirplane(mass, mainEngine, testinertia, wings3);
+
 Airplane testAirplane(mass, mainEngine, testinertia, wings);
+
+Engine heliEngine(10000.0f);
+float heliMass = 750.0f;
+glm::vec3 initialPos(-100.0f, 3000.0f, 0.0f);
+Helicopter mainHelicopter(heliMass, heliEngine, testinertia, initialPos);
+
 
 
 
@@ -165,7 +184,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     if (action == GLFW_PRESS) {
 
         // if (key == GLFW_KEY_W) movement_x = 150;
-        // if (key == GLFW_KEY_S) movement_x = -150;    
+        // if (key == GLFW_KEY_S) movement_x = -150;
         if (key == GLFW_KEY_F) freecam = !freecam;
         if (key == GLFW_KEY_W) is_w_pressed = true;
         if (key == GLFW_KEY_S) is_s_pressed = true;
@@ -173,7 +192,13 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_D) is_d_pressed = true;
         if (key == GLFW_KEY_Q) is_q_pressed = true;
         if (key == GLFW_KEY_E) is_e_pressed = true;
-        if (key == GLFW_KEY_X) mainAirplane.fireMissile();
+        if (key == GLFW_KEY_X) {
+            if (plane && !freecam) {
+                mainAirplane.fireMissile();
+            } else if (!freecam) {
+                mainHelicopter.fireMissile();
+            }
+        }
         if (key == GLFW_KEY_SPACE) is_space_pressed = true;
         if (key == GLFW_KEY_LEFT_CONTROL) is_lctrl_pressed = true;
         if (key == GLFW_KEY_LEFT_SHIFT) is_lshift_pressed = true;
@@ -204,9 +229,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     if (yoffset > 0) {
-        cameraSpeed += 0.05f;
+        cameraSpeed += 0.75f;
     } else if (yoffset < 0) {
-        cameraSpeed = std::max(0.1f, cameraSpeed - 0.1f);
+        cameraSpeed = std::max(0.1f, cameraSpeed - 0.75f);
     }
     if (cameraSpeed > maxCamSpeed) cameraSpeed = maxCamSpeed;
 }
@@ -238,6 +263,34 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     front.y = sin(glm::radians(pitch));
     front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
     cameraFront = glm::normalize(front);
+}
+
+void drawTerrain(ShaderProgram *sp, Mesh *bodyMesh, GLuint tex0, GLuint tex1) {
+    glm::mat4 M = glm::mat4(1.0f);
+    // M = glm::scale(M, glm::vec3(10.0f, 10.0f, 10.0f));
+
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+
+    glEnableVertexAttribArray(sp->a("vertex"));
+    glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, bodyMesh->vertices.data());
+
+    glEnableVertexAttribArray(sp->a("normal"));
+    glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, bodyMesh->normals.data());
+
+    glEnableVertexAttribArray(sp->a("texCoord0"));
+    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, bodyMesh->texCoords.data());
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, tex1);
+
+    glDrawArrays(GL_TRIANGLES, 0, bodyMesh->vertices.size());
+
+    glDisableVertexAttribArray(sp->a("vertex"));
+    glDisableVertexAttribArray(sp->a("normal"));
+    glDisableVertexAttribArray(sp->a("texCoord0"));
 }
 
 void windowResizeCallback(GLFWwindow* window, int width, int height) {
@@ -272,10 +325,15 @@ void initOpenGLProgram(GLFWwindow *window) {
 
     tex0 = readTexture("F-16_Airframe_BaseColorFinalized.png");
     tex1 = readTexture("rocket.jpg");
+    tex2 = readTexture("heli_outside_skin_2.tga.png");
+    tex3 = readTexture("colormap.png");
 
     ModelLoader loader;
     airplaneMesh = loader.loadModel("models/source/F-16.obj");
     missleMesh = loader.loadModel("models/source/rocket.3ds");
+    helicopterMesh = loader.loadModel("models/source/Large_Helicopter2.blend");
+    terrainMesh = loader.loadModel("models/source/lowres-model.obj");
+    rotorMesh = loader.loadModel("models/source/rotor.obj");
 }
 
 
@@ -288,49 +346,65 @@ void drawScene(GLFWwindow *window) {
     if (freecam) {
         updateCameraPosition();
         V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-    } else {
+    } else if (plane) {
         glm::vec3 planeCamPos = mainAirplane.position + mainAirplane.orientation * glm::vec3(-200.0f, 10.0f, 0.0f);
         glm::vec3 planeCamlookAtPoint = mainAirplane.position;
         glm::vec3 planeCamUp = mainAirplane.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
         V = glm::lookAt(planeCamPos, planeCamlookAtPoint, planeCamUp);
+    } else {
+        glm::vec3 planeCamPos = mainHelicopter.position + mainHelicopter.orientation * glm::vec3(-300.0f, 15.0f, 0.0f);
+        glm::vec3 planeCamlookAtPoint = mainHelicopter.position;
+        glm::vec3 planeCamUp = mainHelicopter.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
+        V = glm::lookAt(planeCamPos, planeCamlookAtPoint, planeCamUp);
     }
 
-    if (is_w_pressed) {
-        throttle += 0.001;
-        throttle = glm::clamp(throttle, 0.0f, 1.0f);
-        mainAirplane.control_throttle = throttle;
-    } else if (is_s_pressed) {
-        throttle -= 0.001;
-        throttle = glm::clamp(throttle, 0.0f, 1.0f);
-        mainAirplane.control_throttle = throttle;
-    }
+    if (!freecam) {
+        if (is_w_pressed) {
+            throttle += 0.001;
+            throttle = glm::clamp(throttle, 0.0f, 1.0f);
+            mainAirplane.control_throttle = throttle;
+            mainHelicopter.throttle = throttle;
+            
+        } else if (is_s_pressed) {
+            throttle -= 0.001;
+            throttle = glm::clamp(throttle, 0.0f, 1.0f);
+            mainAirplane.control_throttle = throttle;
+            mainHelicopter.throttle = throttle;
+        }
 
-    if (is_a_pressed) {
-        mainAirplane.aileron = -1;
-    } else if (is_d_pressed) {
-        mainAirplane.aileron = 1;
-    } else {
-        mainAirplane.aileron = 0;
-    }
-    if (is_q_pressed) {
-        mainAirplane.rudder = -1;
-    } else if (is_e_pressed) {
-        mainAirplane.rudder = 1;
-    } else {
-        mainAirplane.rudder = 0;
-    }
+        if (is_a_pressed) {
+            mainAirplane.aileron = -1;
+            mainHelicopter.applyInput('a', delta_time);
+        } else if (is_d_pressed) {
+            mainAirplane.aileron = 1;
+            mainHelicopter.applyInput('d', delta_time);
+        } else {
+            mainAirplane.aileron = 0;
+        }
+        if (is_q_pressed) {
+            mainAirplane.rudder = -1;
+            mainHelicopter.applyInput('q', delta_time);
+        } else if (is_e_pressed) {
+            mainAirplane.rudder = 1;
+            mainHelicopter.applyInput('e', delta_time);
+        } else {
+            mainAirplane.rudder = 0;
+        }
 
-    if (is_lshift_pressed) {
-        mainAirplane.elevator = 1;
-    } else if (is_lctrl_pressed) {
-        mainAirplane.elevator = -1;
-    } else {
-        mainAirplane.elevator = 0;
+        if (is_lshift_pressed) {
+            mainAirplane.elevator = 1;
+            mainHelicopter.applyInput('w', delta_time);
+        } else if (is_lctrl_pressed) {
+            mainAirplane.elevator = -1;
+            mainHelicopter.applyInput('s', delta_time);
+        } else {
+            mainAirplane.elevator = 0;
+        }
     }
 
     glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
-    glm::vec4 lp = glm::vec4(0, 6, 0, 1);
+    glm::vec4 lp = glm::vec4(10000, 10000, 10000, 1);
 
     sp->use();
     glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
@@ -340,11 +414,17 @@ void drawScene(GLFWwindow *window) {
     glUniform1i(sp->u("textureMap1"), 1);
     glUniform1f(sp->u("lightIntensity"), 1.25f);
 
+    drawTerrain(sp, &terrainMesh, tex3, tex1);
+
+
     testAirplane.drawAirplane(0, sp, &airplaneMesh, &missleMesh, tex0, tex1);
 
     
-    mainAirplane.update(delta_time);
-    mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, &missleMesh, tex0, tex1);
+    // mainAirplane.update(delta_time);
+    // mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, &missleMesh, tex0, tex1);
+
+    mainHelicopter.updateHeli(delta_time);
+    mainHelicopter.drawHelicopter(delta_time, sp, &helicopterMesh, &rotorMesh, &missleMesh, tex2, tex1);
     
     glfwSwapBuffers(window);
 }
