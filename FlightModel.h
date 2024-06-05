@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <fstream>
 #include "RigidBody.h"
@@ -183,7 +183,7 @@ public:
     Engine engine;
     float flight_time, max_flight_time, engine_time;
 
-    Missile(float mass, const Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity, float max_flight_time = 1000.0f) :
+    Missile(float mass, const Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity, float max_flight_time = 5.0f) :
             RigidBody(mass, inertia, initial_position, initial_orientation, initial_velocity),
             engine(engine),
             flight_time(0.0f),
@@ -201,7 +201,7 @@ public:
         M = glm::translate(M, position);
         M = M * glm::mat4_cast(orientation);
         M = glm::rotate(M, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        M = glm::scale(M, glm::vec3(3.0f, 3.0f, 3.0f)); // changing the quaternion orientation into mat4
+        M = glm::scale(M, glm::vec3(4.0f, 4.0f, 4.0f)); // changing the quaternion orientation into mat4
 
         glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 
@@ -251,8 +251,8 @@ public:
         {}
 
     void fireMissile() {
-        glm::vec3 missile_position = this->position + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)) + glm::vec3(0.0f, -2.5f, missile_offset); // Przyk�adowe miejsce startu rakiety
-        glm::vec3 missile_velocity = this->velocity + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)); // Przyk�adowa pr�dko�� pocz�tkowa rakiety
+        glm::vec3 missile_position = this->position + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)) + glm::vec3(0.0f, -2.5f, missile_offset); // Przykładowe miejsce startu rakiety
+        glm::vec3 missile_velocity = this->velocity + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)); // Przykładowa prędkość początkowa rakiety
         Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, this->orientation, missile_velocity);
         missiles.push_back(new_missile);
         missile_offset *= -1;
@@ -282,7 +282,7 @@ public:
             // log_file << aileron << " " << elevator << " " << rudder << "\n";
 
            if (aileron == -1) {
-                wing_elements[0].setControlInput(-1);
+               wing_elements[0].setControlInput(-1);
                wing_elements[1].setControlInput(1);
             } else if (aileron == 1) {
                wing_elements[0].setControlInput(1);
@@ -301,9 +301,9 @@ public:
             }
 
             if (rudder == -1) {
-                wing_elements[3].setControlInput(-1);
-            } else if (rudder == 1) {
                 wing_elements[3].setControlInput(1);
+            } else if (rudder == 1) {
+                wing_elements[3].setControlInput(-1);
             } else {
                 wing_elements[3].setControlInput(0.0f);
             }
@@ -361,6 +361,207 @@ public:
         glDisableVertexAttribArray(sp->a("vertex"));
         glDisableVertexAttribArray(sp->a("normal"));
         glDisableVertexAttribArray(sp->a("texCoord0"));
+    }
+};
+
+
+class Helicopter{
+public:
+    float mainRotorSpeed;
+    float tailRotorSpeed;
+    float mass;
+    Engine engine;
+    Engine missileEngine;
+    std::vector<Missile> missiles;
+    glm::vec3 position{};
+    glm::quat orientation{};
+    glm::vec3 velocity{};
+    glm::vec3 angular_velocity{};
+    float maxTiltAngle = glm::radians(75.0f); // Maksymalny kąt wychylenia w radianach
+    float stabilizationRate = 0.1f;
+    float turn_rate = glm::radians(1000.0f);
+    float throttle = 1.0f;
+    float missile_offset = 40.0f;
+
+    Helicopter(float mass, Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position) :
+            mass(mass),
+            mainRotorSpeed(0.0f),
+            tailRotorSpeed(0.0f),
+            engine(engine),
+            position(initial_position),
+            missileEngine(10000.0f)
+        {}
+
+     void fireMissile() {
+        glm::vec3 missile_position = this->position + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)) + glm::vec3(-5.0f, -20.5f, missile_offset); // Przykładowe miejsce startu rakiety
+        glm::vec3 missile_velocity = this->velocity + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)); // Przykładowa prędkość początkowa rakiety
+        Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, this->orientation, missile_velocity);
+        missiles.push_back(new_missile);
+        missile_offset *= -1;
+    }
+
+    void updateHeli(float deltaTime) {
+
+        // Update orientation
+        glm::quat deltaOrientation = glm::quat(1.0f, angular_velocity * deltaTime);
+        orientation = glm::normalize(glm::cross(deltaOrientation, orientation));
+
+        // Clamp orientation to max tilt angle
+        // glm::vec3 euler = glm::eulerAngles(orientation);
+        // euler.x = glm::clamp(euler.x, -maxTiltAngle, maxTiltAngle);
+        // euler.z = glm::clamp(euler.z, -maxTiltAngle, maxTiltAngle);
+        // orientation = glm::quat(euler);
+        
+
+        glm::vec3 thrust = engine.thrust * throttle * (orientation * UP);
+
+        glm::vec3 acceleration = thrust / mass;
+        acceleration.y -= G;
+
+
+        // Aktualizacja prędkości i pozycji
+        velocity += acceleration * deltaTime;
+        position += velocity * deltaTime;
+
+        // Update rockets
+        for (auto it = missiles.begin(); it != missiles.end();) {
+            it->update(deltaTime);
+            if (it->flight_time > it->max_flight_time) {
+                it = missiles.erase(it);
+            } else {
+                it++;
+            }
+        }
+
+        angular_velocity = glm::vec3(0.0f);
+    }
+
+    void applyInput(char key, float deltaTime) {
+
+        switch (key) {
+        case 'w':
+            angular_velocity -= glm::vec3(0.0f, 0.0f, turn_rate * deltaTime);
+            break;
+        case 's':
+            angular_velocity += glm::vec3(0.0f, 0.0f, turn_rate * deltaTime);
+            break;
+        case 'a':
+            angular_velocity -= glm::vec3(turn_rate * deltaTime * 1.2, 0.0f, 0.0f);
+            break;
+        case 'd':
+            angular_velocity += glm::vec3(turn_rate * deltaTime * 1.2 , 0.0f, 0.0f);
+            break;
+        case 'q':
+            angular_velocity += glm::vec3(0.0f, turn_rate * deltaTime * 1.5, 0.0f);
+            break;
+        case 'e':
+            angular_velocity -= glm::vec3(0.0f, turn_rate * deltaTime * 1.5, 0.0f);
+            break;
+        }
+    }
+
+    void drawHelicopter(float delta_time, ShaderProgram *sp, Mesh *bodyMesh, Mesh *rotorMesh, Mesh *missileMesh, GLuint tex0, GLuint tex1) {
+        // Rysowanie ciała helikoptera
+        glm::mat4 M = glm::mat4(1.0f);
+        M = glm::translate(M, position);
+        M = M * glm::mat4_cast(orientation);
+        M = glm::scale(M, glm::vec3(0.3f, 0.3f, 0.3f));
+
+        glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+
+        glEnableVertexAttribArray(sp->a("vertex"));
+        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, bodyMesh->vertices.data());
+
+        glEnableVertexAttribArray(sp->a("normal"));
+        glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, bodyMesh->normals.data());
+
+        glEnableVertexAttribArray(sp->a("texCoord0"));
+        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, bodyMesh->texCoords.data());
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex0);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, tex1);
+
+        glDrawArrays(GL_TRIANGLES, 0, bodyMesh->vertices.size());
+
+        glDisableVertexAttribArray(sp->a("vertex"));
+        glDisableVertexAttribArray(sp->a("normal"));
+        glDisableVertexAttribArray(sp->a("texCoord0"));
+
+        // Rysowanie głównego śmigła
+        static float rotorAngle = 0.0f;
+        rotorAngle += 10.0f * delta_time;
+        if (rotorAngle > 2 * PI) rotorAngle -= 2 * PI;
+
+        // Resetujemy macierz transformacji wirnika
+        glm::mat4 rotorTransform = glm::mat4(1.0f);
+        rotorTransform = glm::translate(rotorTransform, this->position);
+        rotorTransform *= glm::mat4_cast(this->orientation);
+        rotorTransform = glm::translate(rotorTransform, glm::vec3(-7.0f, -30.0f, 0.0f));
+        rotorTransform = glm::rotate(rotorTransform, rotorAngle, glm::vec3(0.0f, 1.0f, 0.0f)); 
+        rotorTransform = glm::scale(rotorTransform, glm::vec3(12.0f, 12.0f, 12.0f));
+
+        glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(rotorTransform));
+
+        glEnableVertexAttribArray(sp->a("vertex"));
+        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, rotorMesh->vertices.data());
+
+        glEnableVertexAttribArray(sp->a("normal"));
+        glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, rotorMesh->normals.data());
+
+        glEnableVertexAttribArray(sp->a("texCoord0"));
+        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, rotorMesh->texCoords.data());
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex0);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, tex1);
+
+        glDrawArrays(GL_TRIANGLES, 0, rotorMesh->vertices.size());
+
+        glDisableVertexAttribArray(sp->a("vertex"));
+        glDisableVertexAttribArray(sp->a("normal"));
+        glDisableVertexAttribArray(sp->a("texCoord0"));
+
+        // Rysowanie tylnego śmigła
+        glm::mat4 tailRotorTransform = glm::mat4(1.0f);
+        tailRotorTransform = glm::translate(tailRotorTransform, this->position);
+        tailRotorTransform *= glm::mat4_cast(this->orientation);
+        tailRotorTransform = glm::translate(tailRotorTransform, glm::vec3(-125.0, 2.5f, 10.0f));
+        tailRotorTransform = glm::rotate(tailRotorTransform, glm::radians(270.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        tailRotorTransform = glm::rotate(tailRotorTransform, rotorAngle * 1.7f, glm::vec3(0.0f, 1.0f, 0.0f));
+        tailRotorTransform = glm::scale(tailRotorTransform, glm::vec3(3.5f, 3.5f, 3.5f));
+
+        glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(tailRotorTransform));
+
+        glEnableVertexAttribArray(sp->a("vertex"));
+        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, rotorMesh->vertices.data());
+
+        glEnableVertexAttribArray(sp->a("normal"));
+        glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, rotorMesh->normals.data());
+
+        glEnableVertexAttribArray(sp->a("texCoord0"));
+        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, rotorMesh->texCoords.data());
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex0);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, tex1);
+
+        glDrawArrays(GL_TRIANGLES, 0, rotorMesh->vertices.size());
+
+        glDisableVertexAttribArray(sp->a("vertex"));
+        glDisableVertexAttribArray(sp->a("normal"));
+        glDisableVertexAttribArray(sp->a("texCoord0"));
+
+        // Drawing rockets
+        for (Missile &missile : missiles) {
+            missile.drawMissile(delta_time, sp, missileMesh, tex0, tex1);
+        }
     }
 };
 
