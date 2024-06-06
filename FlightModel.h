@@ -120,6 +120,15 @@ public:
     void setControlInput(float _control_input) {
         this->control_input = _control_input;
     }
+    glm::vec3 getCenterOfPressure() { return center_of_pressure; }
+
+    void setNormalVector(float angle, const glm::vec3 &axis) {
+        // Convert angle from degrees to radians
+        float angle_rad = glm::radians(angle);
+
+        // Rotate the normal vector by the given angle around the specified axis
+        normal = glm::rotate(initial_normal, angle_rad, axis);
+    }
 
     void calculate_forces(RigidBody *rigid_body, float delta_time) {
         // std::ofstream wingDebug("wingDebug.txt", std::ios::app);
@@ -148,7 +157,7 @@ public:
         }
 
         // induced drag, increases with lift
-        float induced_drag_coeff = (std::pow(airfoilData.first, 2)) / (PI * wing_aspect_ratio); // (PI * wing_aspect_ratio * efficiency_ratio) <- test?
+        float induced_drag_coeff = (std::pow(airfoilData.first, 2)) / (PI * wing_aspect_ratio);
         airfoilData.second += induced_drag_coeff * 100;
 
         float air_density = Atmosphere::get_air_density(rigid_body->position.y);
@@ -183,7 +192,7 @@ public:
     Engine engine;
     float flight_time, max_flight_time, engine_time;
 
-    Missile(float mass, const Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity, float max_flight_time = 5.0f) :
+    Missile(float mass, const Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity, float max_flight_time = 7.0f) :
             RigidBody(mass, inertia, initial_position, initial_orientation, initial_velocity),
             engine(engine),
             flight_time(0.0f),
@@ -195,7 +204,7 @@ public:
         flight_time += delta_time;
     }
 
-    void drawMissile(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, GLuint tex0, GLuint tex1) {
+    void drawMissile(float delta_time, ShaderProgram *sp, Mesh *missileMesh, GLuint missileTex) {
 
         glm::mat4 M = glm::mat4(1.0f);
         M = glm::translate(M, position);
@@ -206,24 +215,72 @@ public:
         glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 
         glEnableVertexAttribArray(sp->a("vertex"));
-        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh->vertices.data());
+        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, missileMesh->vertices.data());
 
         glEnableVertexAttribArray(sp->a("normal"));
-        glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh->normals.data());
+        glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, missileMesh->normals.data());
 
         glEnableVertexAttribArray(sp->a("texCoord0"));
-        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, airplaneMesh->texCoords.data());
+        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, missileMesh->texCoords.data());
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex0);
+        glBindTexture(GL_TEXTURE_2D, missileTex);
 
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, tex1); // mozna rozwinac potem o inne mapowania
-
-        glDrawArrays(GL_TRIANGLES, 0, airplaneMesh->vertices.size());
+        glDrawArrays(GL_TRIANGLES, 0, missileMesh->vertices.size());
 
         glDisableVertexAttribArray(sp->a("vertex"));
         glDisableVertexAttribArray(sp->a("normal"));
+        glDisableVertexAttribArray(sp->a("texCoord0"));
+    }
+
+    void drawExplosion(ShaderProgram *sp, glm::vec3 cameraPosition, glm::mat4 V, GLuint explosionTex) {
+
+        // Obliczenie macierzy modelu dla billboardu
+        glm::vec3 direction = glm::normalize(cameraPosition - position);
+        glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0.0, 1.0, 0.0), direction));
+        glm::vec3 up = glm::cross(direction, right);
+
+        glm::mat4 billboardModel = glm::mat4(1.0f);
+        billboardModel[0] = glm::vec4(right, 0.0);
+        billboardModel[1] = glm::vec4(up, 0.0);
+        billboardModel[2] = glm::vec4(direction, 0.0);
+        billboardModel = glm::translate(billboardModel, position);
+        billboardModel = glm::scale(billboardModel, glm::vec3(200.0f));
+
+        glUniformMatrix4fv(sp->u("M"), 1, GL_FALSE, glm::value_ptr(billboardModel));
+
+        // Rysowanie kwadratu dla billboardu
+        static const GLfloat billboardVertices[] = {
+            -0.5f, -0.5f, 0.0f,
+             0.5f, -0.5f, 0.0f,
+             0.5f,  0.5f, 0.0f,
+            -0.5f,  0.5f, 0.0f,
+        };
+
+        static const GLfloat billboardTexCoords[] = {
+            0.0f, 0.0f,
+            1.0f, 0.0f,
+            1.0f, 1.0f,
+            0.0f, 1.0f,
+        };
+
+        static const GLuint billboardIndices[] = {
+            0, 1, 2,
+            2, 3, 0
+        };
+
+        glEnableVertexAttribArray(sp->a("vertex"));
+        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, GL_FALSE, 0, billboardVertices);
+
+        glEnableVertexAttribArray(sp->a("texCoord0"));
+        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, GL_FALSE, 0, billboardTexCoords);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, explosionTex);
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, billboardIndices);
+
+        glDisableVertexAttribArray(sp->a("vertex"));
         glDisableVertexAttribArray(sp->a("texCoord0"));
     }
 };
@@ -237,8 +294,8 @@ public:
     short aileron, rudder, elevator;
     Engine missileEngine;
 
-    Airplane(float mass, const Engine &engine, const glm::mat3 &inertia, const std::vector<Wing> &wings) :
-            RigidBody(mass, inertia),
+    Airplane(float mass, const Engine &engine, const glm::mat3 &inertia, const std::vector<Wing> &wings, const glm::vec3 &initial_position) :
+            RigidBody(mass, inertia, initial_position),
             engine(engine),
             wing_elements(wings),
             input(1.0f),
@@ -278,34 +335,76 @@ public:
 
 
         } else {
+            std::ofstream log_file("log_file.txt", std::ios::app);
+            flight_time += delta_time;
             // std::ofstream log_file("log_file.txt", std::ios::app);
             // log_file << aileron << " " << elevator << " " << rudder << "\n";
+            if (false) 
+{
+                if (aileron == -1) {
+                    wing_elements[0].setControlInput(-1);
+                    wing_elements[1].setControlInput(1);
+                } else if (aileron == 1) {
+                    wing_elements[0].setControlInput(1);
+                    wing_elements[1].setControlInput(-1);
+                } else {
+                    wing_elements[0].setControlInput(0.0f);
+                    wing_elements[1].setControlInput(0.0f);
+                }
 
-           if (aileron == -1) {
-               wing_elements[0].setControlInput(-1);
-               wing_elements[1].setControlInput(1);
-            } else if (aileron == 1) {
-               wing_elements[0].setControlInput(1);
-                wing_elements[1].setControlInput(-1);
-            } else {
-                wing_elements[0].setControlInput(0.0f);
-                wing_elements[1].setControlInput(0.0f);
-            }
+                if (elevator == -1) {
+                    wing_elements[2].setControlInput(1);
+                } else if (elevator == 1) {
+                    wing_elements[2].setControlInput(-1);
+                } else {
+                    wing_elements[2].setControlInput(0.0f);
+                }
 
-            if (elevator == -1) {
-                wing_elements[2].setControlInput(1);
-            } else if (elevator == 1) {
-                wing_elements[2].setControlInput(-1);
+                if (rudder == -1) {
+                    wing_elements[3].setControlInput(1);
+                } else if (rudder == 1) {
+                    wing_elements[3].setControlInput(-1);
+                } else {
+                    wing_elements[3].setControlInput(0.0f);
+                }
             } else {
-                wing_elements[2].setControlInput(0.0f);
-            }
+                if (aileron == -1) {
+                    wing_elements[0].setControlInput(-1);
+                    wing_elements[1].setControlInput(1);
+                    wing_elements[0].setNormalVector(25, Z_AXIS);
+                    wing_elements[1].setNormalVector(-25, Z_AXIS);
+                } else if (aileron == 1) {
+                    wing_elements[0].setNormalVector(-25, Z_AXIS);
+                    wing_elements[1].setNormalVector(25, Z_AXIS);
+                    wing_elements[0].setControlInput(1);
+                    wing_elements[1].setControlInput(-1);
+                } else {
+                    wing_elements[0].setNormalVector(0.0f, Z_AXIS);
+                    wing_elements[1].setNormalVector(0.0f, Z_AXIS);
+                    wing_elements[0].setControlInput(0.0f);
+                    wing_elements[1].setControlInput(0.0f);
+                }
 
-            if (rudder == -1) {
-                wing_elements[3].setControlInput(1);
-            } else if (rudder == 1) {
-                wing_elements[3].setControlInput(-1);
-            } else {
-                wing_elements[3].setControlInput(0.0f);
+                if (elevator == -1) {
+                    wing_elements[2].setNormalVector(25, Z_AXIS);
+                    this->add_force_at_point(glm::vec3(0.0f, -20000.0f, 0.0f), wing_elements[2].getCenterOfPressure());
+                    // this->add_torque(glm::vec3(0.0f, 0.0f, 1000.0f));
+                } else if (elevator == 1) {
+                    wing_elements[2].setNormalVector(-25, Z_AXIS);
+                    this->add_force_at_point(glm::vec3(0.0f, 20000.0f, 0.0f), wing_elements[2].getCenterOfPressure());
+                } else {
+                    wing_elements[2].setNormalVector(0.0f, Z_AXIS);
+                }
+
+                if (rudder == -1) {
+                    wing_elements[3].setNormalVector(25, Y_AXIS);
+                    wing_elements[3].setControlInput(1);
+                } else if (rudder == 1) {
+                    wing_elements[3].setNormalVector(-25, Y_AXIS);
+                    wing_elements[3].setControlInput(-1);
+                } else {
+                    wing_elements[3].setNormalVector(0.0f, Y_AXIS);
+                }
             }
 
             for (Wing &wing : wing_elements) {
@@ -323,12 +422,13 @@ public:
                     it++;
                 }
             }
+            // log_file << flight_time << " pos " << position.y << " speed " << glm::length(velocity) << " force " << getForce().x << " force " << getForce().y << " force " << getForce().z << "\n";
 
             RigidBody::UpdateBody(delta_time);
         }
     }
 
-    void drawAirplane(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, Mesh *missileMesh, GLuint tex0, GLuint tex1) {
+    void drawAirplane(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, Mesh *missileMesh, GLuint airplaneTex, GLuint missileTex) {
 
         glm::mat4 M = glm::mat4(1.0f);
         M = glm::translate(M, position);
@@ -346,16 +446,13 @@ public:
         glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, airplaneMesh->texCoords.data());
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex0);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, tex1); // mozna rozwinac potem o inne mapowania
+        glBindTexture(GL_TEXTURE_2D, airplaneTex);
 
         glDrawArrays(GL_TRIANGLES, 0, airplaneMesh->vertices.size());
 
         // Drawing rockets
         for (Missile &missile : missiles) {
-            missile.drawMissile(delta_time, sp, missileMesh, tex0, tex1);
+            missile.drawMissile(delta_time, sp, missileMesh, missileTex);
         }
 
         glDisableVertexAttribArray(sp->a("vertex"));
@@ -380,7 +477,7 @@ public:
     float maxTiltAngle = glm::radians(75.0f); // Maksymalny kąt wychylenia w radianach
     float stabilizationRate = 0.1f;
     float turn_rate = glm::radians(1000.0f);
-    float throttle = 1.0f;
+    float throttle = 0.75f;
     float missile_offset = 40.0f;
 
     Helicopter(float mass, Engine &engine, const glm::mat3 &inertia, glm::vec3 initial_position) :
@@ -395,7 +492,7 @@ public:
      void fireMissile() {
         glm::vec3 missile_position = this->position + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)) + glm::vec3(-5.0f, -20.5f, missile_offset); // Przykładowe miejsce startu rakiety
         glm::vec3 missile_velocity = this->velocity + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)); // Przykładowa prędkość początkowa rakiety
-        Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, this->orientation, missile_velocity);
+        Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, this->orientation, missile_velocity, 10);
         missiles.push_back(new_missile);
         missile_offset *= -1;
     }
@@ -460,7 +557,7 @@ public:
         }
     }
 
-    void drawHelicopter(float delta_time, ShaderProgram *sp, Mesh *bodyMesh, Mesh *rotorMesh, Mesh *missileMesh, GLuint tex0, GLuint tex1) {
+    void drawHelicopter(float delta_time, glm::mat4 V, ShaderProgram *sp, Mesh *bodyMesh, Mesh *rotorMesh, Mesh *missileMesh, GLuint heliTex, GLuint missileTex, GLuint explosionTex) {
         // Rysowanie ciała helikoptera
         glm::mat4 M = glm::mat4(1.0f);
         M = glm::translate(M, position);
@@ -479,10 +576,7 @@ public:
         glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, bodyMesh->texCoords.data());
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex0);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, tex1);
+        glBindTexture(GL_TEXTURE_2D, heliTex);
 
         glDrawArrays(GL_TRIANGLES, 0, bodyMesh->vertices.size());
 
@@ -515,10 +609,7 @@ public:
         glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, rotorMesh->texCoords.data());
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex0);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, tex1);
+        glBindTexture(GL_TEXTURE_2D, heliTex);
 
         glDrawArrays(GL_TRIANGLES, 0, rotorMesh->vertices.size());
 
@@ -547,10 +638,7 @@ public:
         glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, rotorMesh->texCoords.data());
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex0);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, tex1);
+        glBindTexture(GL_TEXTURE_2D, heliTex);
 
         glDrawArrays(GL_TRIANGLES, 0, rotorMesh->vertices.size());
 
@@ -560,7 +648,11 @@ public:
 
         // Drawing rockets
         for (Missile &missile : missiles) {
-            missile.drawMissile(delta_time, sp, missileMesh, tex0, tex1);
+            if (missile.flight_time + 3 < missile.max_flight_time) {
+                missile.drawMissile(delta_time, sp, missileMesh, missileTex);
+            } else {
+                missile.drawExplosion(sp, position, V, explosionTex);
+            }
         }
     }
 };

@@ -32,14 +32,15 @@ public:
     glm::vec3 angular_velocity{};               // body space, radians/second
     glm::mat3 inertia{}, body_space_inertia{};     // inertia tensor, body space
 
-    RigidBody(float mass, const glm::mat3 &inertia) :
-            mass(mass),
-            position(glm::vec3(0.0f, 3000.0f, 0.0f)),
+    RigidBody(float _mass, const glm::mat3 &_inertia, const glm::vec3 &_position) :
+            mass(_mass),
+            position(_position),
             orientation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)),
-            velocity(glm::vec3(500.0f / 3.6f, 0.0f, 0.0f)),
+            velocity(glm::vec3(600.0f / 3.6f, 0.0f, 0.0f)),
             angular_velocity(glm::vec3(0.0f)),
-            inertia(inertia),
-            body_space_inertia(glm::inverse(inertia)) { }
+            inertia(_inertia),
+            body_space_inertia(glm::inverse(_inertia)) { }
+
     RigidBody(float mass, const glm::mat3 &inertia, glm::vec3 initial_position, glm::quat initial_orientation, glm::vec3 initial_velocity) : // this constructor will be used for the Missle class
             mass(mass),
             position(initial_position),
