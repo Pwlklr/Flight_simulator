@@ -41,6 +41,8 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "myCube.h"
 #include "myTeapot.h"
 #include "FlightModel.h"
+#include "Colission.h"
+#include "Terrain.h"
 
 
 float delta_time = 0; //zmienna globalna określająca czas między klatkami
@@ -60,7 +62,7 @@ float mouseSensitivity = 0.09f;
 
 bool firstMouse = true;
 float lastX = 400, lastY = 300;
-float yaw = -90.0f, pitch = 0.0f;
+float yawx = -90.0f, pitchx = 0.0f;
 
 //zmienne globalne wykorzystywane w funkcjionalności freecam
 bool is_w_pressed = false;
@@ -254,19 +256,20 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     xoffset *= mouseSensitivity;
     yoffset *= mouseSensitivity;
 
-    yaw += xoffset;
-    pitch += yoffset;
+    yawx += xoffset;
+    pitchx += yoffset;
 
-    if (pitch > 89.0f)  pitch = 89.0f;
-    if (pitch < -89.0f) pitch = -89.0f;
+    if (pitchx > 89.0f)  pitchx = 89.0f;
+    if (pitchx < -89.0f) pitchx = -89.0f;
 
     glm::vec3 front;
-    front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-    front.y = sin(glm::radians(pitch));
-    front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+    front.x = cos(glm::radians(pitchx)) * cos(glm::radians(yawx));
+    front.y = sin(glm::radians(pitchx));
+    front.z = cos(glm::radians(pitchx)) * sin(glm::radians(yawx));
     cameraFront = glm::normalize(front);
 }
 
+/*
 void drawTerrain(ShaderProgram *sp, Mesh *bodyMesh, GLuint tex0) {
     glm::mat4 M = glm::mat4(1.0f);
     // M = glm::scale(M, glm::vec3(10.0f, 10.0f, 10.0f));
@@ -291,7 +294,7 @@ void drawTerrain(ShaderProgram *sp, Mesh *bodyMesh, GLuint tex0) {
     glDisableVertexAttribArray(sp->a("normal"));
     glDisableVertexAttribArray(sp->a("texCoord0"));
 }
-
+*/
 void windowResizeCallback(GLFWwindow* window, int width, int height) {
     if (height == 0) return;
     aspectRatio = (float)width / (float)height;
@@ -356,13 +359,16 @@ void drawScene(GLFWwindow *window) {
         updateCameraPosition();
         V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         viewPos = cameraPos;
+        gravity(cameraPos);
     } else if (plane) {
+        gravity(mainAirplane.position);
         glm::vec3 planeCamPos = mainAirplane.position + mainAirplane.orientation * glm::vec3(-200.0f, 10.0f, 0.0f);
         glm::vec3 planeCamlookAtPoint = mainAirplane.position;
         glm::vec3 planeCamUp = mainAirplane.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
         V = glm::lookAt(planeCamPos, planeCamlookAtPoint, planeCamUp);
         viewPos = cameraPos;
     } else {
+        gravity(mainHelicopter.position);
         glm::vec3 planeCamPos = mainHelicopter.position + mainHelicopter.orientation * glm::vec3(-300.0f, 15.0f, 0.0f);
         glm::vec3 planeCamlookAtPoint = mainHelicopter.position;
         glm::vec3 planeCamUp = mainHelicopter.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
