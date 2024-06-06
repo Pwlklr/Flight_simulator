@@ -308,8 +308,8 @@ public:
         {}
 
     void fireMissile() {
-        glm::vec3 missile_position = this->position + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)) + glm::vec3(0.0f, -2.5f, missile_offset); // Przykładowe miejsce startu rakiety
-        glm::vec3 missile_velocity = this->velocity + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)); // Przykładowa prędkość początkowa rakiety
+        glm::vec3 missile_position = this->position + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)) + glm::vec3(0.0f, -2.5f, missile_offset); // Przyk�adowe miejsce startu rakiety
+        glm::vec3 missile_velocity = this->velocity + (this->orientation * glm::vec3(1.0f, 1.0f, 1.0f)); // Przyk�adowa pr�dko�� pocz�tkowa rakiety
         Missile new_missile(100.0f, missileEngine, glm::mat3(1.0f), missile_position, this->orientation, missile_velocity);
         missiles.push_back(new_missile);
         missile_offset *= -1;
@@ -430,35 +430,35 @@ public:
 
     void drawAirplane(float delta_time, ShaderProgram *sp, Mesh *airplaneMesh, Mesh *missileMesh, GLuint airplaneTex, GLuint missileTex) {
 
-        glm::mat4 M = glm::mat4(1.0f);
-        M = glm::translate(M, position);
-        M = M * glm::mat4_cast(orientation); // changing the quaternion orientation into mat4
+      glm::mat4 M = glm::mat4(1.0f);
+      M = glm::translate(M, position);
+      M = M * glm::mat4_cast(orientation); // changing the quaternion orientation into mat4
 
-        glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+      glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 
-        glEnableVertexAttribArray(sp->a("vertex"));
-        glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh->vertices.data());
+      glEnableVertexAttribArray(sp->a("vertex"));
+      glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, airplaneMesh->vertices.data());
 
-        glEnableVertexAttribArray(sp->a("normal"));
-        glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh->normals.data());
+      glEnableVertexAttribArray(sp->a("normal"));
+      glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, airplaneMesh->normals.data());
 
-        glEnableVertexAttribArray(sp->a("texCoord0"));
-        glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, airplaneMesh->texCoords.data());
+      glEnableVertexAttribArray(sp->a("texCoord0"));
+      glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, airplaneMesh->texCoords.data());
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, airplaneTex);
 
-        glDrawArrays(GL_TRIANGLES, 0, airplaneMesh->vertices.size());
+      glDrawArrays(GL_TRIANGLES, 0, airplaneMesh->vertices.size());
 
         // Drawing rockets
         for (Missile &missile : missiles) {
             missile.drawMissile(delta_time, sp, missileMesh, missileTex);
         }
 
-        glDisableVertexAttribArray(sp->a("vertex"));
-        glDisableVertexAttribArray(sp->a("normal"));
-        glDisableVertexAttribArray(sp->a("texCoord0"));
-    }
+      glDisableVertexAttribArray(sp->a("vertex"));
+      glDisableVertexAttribArray(sp->a("normal"));
+      glDisableVertexAttribArray(sp->a("texCoord0"));
+  }
 };
 
 
