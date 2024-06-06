@@ -340,8 +340,10 @@ void initOpenGLProgram(GLFWwindow *window) {
 
 glm::vec4 sunPosition = glm::vec4(1000, 10000, 0, 1);
 glm::vec3 sunColor = glm::vec3(1.0f, 1.0f, 1.0f);
+glm::vec4 secondLightPosition = glm::vec4(100, 1000, 0, 1);
+glm::vec3 secondLightColor = glm::vec3(1.0f, 0.0f, 0.0f);
 float ambientStrength = 0.1f;
-Missile testMissile(100.0f, heliEngine, glm::mat3(1.0f), initialPos, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f));
+float secondIntensity = 10.0f;
 
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow *window) {
@@ -414,12 +416,17 @@ void drawScene(GLFWwindow *window) {
 
     glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
+    secondLightPosition = glm::vec4(mainHelicopter.position + glm::vec3(-10.0f, 10.0f, 0.0f), 1.0f);
+
     sp->use();
     glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
     glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
     glUniform4fv(sp->u("sunPosition"), 1, glm::value_ptr(sunPosition));
     glUniform3fv(sp->u("sunColor"), 1, glm::value_ptr(sunColor));
+    glUniform4fv(sp->u("secondLightPosition"), 1, glm::value_ptr(secondLightPosition));
+    glUniform3fv(sp->u("secondLightColor"), 1, glm::value_ptr(secondLightColor));
     glUniform1f(sp->u("ambientStrength"), ambientStrength);
+    glUniform1f(sp->u("secondLightIntensity"), secondIntensity);
     glUniform3fv(sp->u("viewPos"), 1, glm::value_ptr(viewPos));
     glUniform1i(sp->u("textureMap0"), 0);
     glUniform1i(sp->u("textureMap1"), 1);
@@ -429,8 +436,6 @@ void drawScene(GLFWwindow *window) {
 
     // testAirplane.drawAirplane(0, sp, &airplaneMesh, &missleMesh, airplaneTex, airplaneTex);
 
-    // testMissile.drawMissile(delta_time, sp, &missleMesh, missileTex);
-    // testMissile.drawExplosion(sp, viewPos, V, explosionTex);
 
     if (plane && !freecam) {
         mainAirplane.update(delta_time);
