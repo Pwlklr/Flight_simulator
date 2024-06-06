@@ -1,44 +1,45 @@
-#version 330
+#version 330 core
 
-//zmienne teksturowania
-uniform sampler2D textureMap0;
-uniform sampler2D textureMap1;
-uniform float lightIntensity;
+// Uniforms
+uniform sampler2D textureMap; // Texture map
+uniform vec3 sunColor;        // Color of the sun
+uniform float ambientStrength; // Strength of the ambient light
+uniform vec3 viewPos;         // Position of the camera in world space
 
+// Inputs from vertex shader
+in vec3 fragPosition; // Position of the fragment in world space
+in vec3 fragNormal;   // Normal vector of the fragment in world space
+in vec2 fragTexCoord; // Texture coordinates
+in vec3 lightDir;     // Direction to the light source
 
+// Output to framebuffer
+out vec4 color;
 
-in vec4 iC;
-in vec4 n;
-in vec4 v;
-in vec4 l;
-in vec2 iTexCoord0;
-in vec2 iTexCoord1;
-
-out vec4 pixelColor; //Zmienna wyjsciowa fragment shadera. Zapisuje sie do niej ostateczny (prawie) kolor piksela
-
-
-float toonify(float nl, float ilosc_przedzialow) {
-        return round(nl * ilosc_przedzialow) / ilosc_przedzialow;
-}
-
-void main(void) {
-
-        vec4 kd = texture(textureMap0, iTexCoord0);
-        vec4 ks = vec4(1,1,1,1);    
-        // vec4 ks = kd / 3;
-        // vec4 ks = texture(textureMap1,iTexCoord0);
-
-        // kd = mix(kd, texture(textureMap1,iTexCoord1), 0.3); //do dodawania refleksi z innych tekstur (np. z nieba)
-
-        vec4 ml = normalize(l);
-        vec4 mn = normalize(n);
-        vec4 mv = normalize(v);
-
-        vec4 r = reflect(-ml,mn);
-
-        float nl = clamp(dot(mn,ml), 0, 1);
-        float rv = pow(clamp(dot(r,mv), 0, 1), 25);
-        // nl = toonify(nl, 4);
-
-        pixelColor=vec4(kd.rgb * nl * lightIntensity, kd.a) + vec4(ks.rgb * rv , 0);
+void main() {
+    // Normalize input vectors
+    vec3 norm = normalize(fragNormal);
+    vec3 lightDirection = normalize(lightDir);
+    vec3 viewDirection = normalize(viewPos - fragPosition);
+    
+    // Ambient lighting
+    vec3 ambient = ambientStrength * sunColor;
+    
+    // Diffuse lighting
+    float diff = max(dot(norm, lightDirection), 0.0);
+    vec3 diffuse = diff * sunColor;
+    
+    // Specular lighting (Phong reflection model)
+    float specularStrength = 0.5;
+    vec3 reflectDir = reflect(-lightDirection, norm);
+    float spec = pow(max(dot(viewDirection, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * sunColor;
+    
+    // Combine results
+    vec3 lighting = ambient + diffuse + specular;
+    
+    // Sample texture color
+    vec4 texColor = texture(textureMap, fragTexCoord);
+    
+    // Combine texture color with lighting
+    color = vec4(lighting, 1.0) * texColor;
 }
