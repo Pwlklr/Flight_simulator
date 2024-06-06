@@ -44,122 +44,132 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "myTeapot.h"
 #include "FlightModel.h"
 #include "builds.h"
-//#include "building1.h"
+#include "Colission.h"
+#include "Terrain.h"
+// <<<<<<< Miasto_Generator
+
+// //#include "building1.h"
 
 
-namespace inertia {
+// namespace inertia {
 
-template <typename T>
-constexpr inline T sq(T x) {
-    return x * x;
-}
+// template <typename T>
+// constexpr inline T sq(T x) {
+//     return x * x;
+// }
 
-// mass element used for inertia tensor calculation
-struct Element {
-    glm::vec3 size;
-    glm::vec3 position; // position in design coordinates
-    glm::vec3 inertia; // moment of inertia
-    glm::vec3 offset; // offset from center of gravity
-    float mass;
-    float volume() const { return size.x * size.y * size.z; }
-};
+// // mass element used for inertia tensor calculation
+// struct Element {
+//     glm::vec3 size;
+//     glm::vec3 position; // position in design coordinates
+//     glm::vec3 inertia; // moment of inertia
+//     glm::vec3 offset; // offset from center of gravity
+//     float mass;
+//     float volume() const { return size.x * size.y * size.z; }
+// };
 
-// cuboid moment of inertia
-inline glm::vec3 cuboid(float mass, const glm::vec3 &size) {
-    float x = size.x, y = size.y, z = size.z;
-    return glm::vec3(sq(y) + sq(z), sq(x) + sq(z), sq(x) + sq(y)) * (1.0f / 12.0f) * mass;
-}
+// // cuboid moment of inertia
+// inline glm::vec3 cuboid(float mass, const glm::vec3 &size) {
+//     float x = size.x, y = size.y, z = size.z;
+//     return glm::vec3(sq(y) + sq(z), sq(x) + sq(z), sq(x) + sq(y)) * (1.0f / 12.0f) * mass;
+// }
 
-// helper function for the creation of a cuboid mass element
-inline Element cube(const glm::vec3 &position, const glm::vec3 &size, float mass = 0.0f) {
-    glm::vec3 inertia = cuboid(mass, size);
-    return { size, position, inertia, position, mass };
-}
-// calculate inertia tensor for a collection of connected masses
-inline glm::mat3 tensor(std::vector<Element> &elements, bool precomputed_offset = false, glm::vec3 *cg = nullptr) {
-    float Ixx = 0, Iyy = 0, Izz = 0;
-    float Ixy = 0, Ixz = 0, Iyz = 0;
+// // helper function for the creation of a cuboid mass element
+// inline Element cube(const glm::vec3 &position, const glm::vec3 &size, float mass = 0.0f) {
+//     glm::vec3 inertia = cuboid(mass, size);
+//     return { size, position, inertia, position, mass };
+// }
+// // calculate inertia tensor for a collection of connected masses
+// inline glm::mat3 tensor(std::vector<Element> &elements, bool precomputed_offset = false, glm::vec3 *cg = nullptr) {
+//     float Ixx = 0, Iyy = 0, Izz = 0;
+//     float Ixy = 0, Ixz = 0, Iyz = 0;
 
-    float mass = 0;
-    glm::vec3 moment_of_inertia(0.0f);
+//     float mass = 0;
+//     glm::vec3 moment_of_inertia(0.0f);
 
-    for (const auto &element : elements) {
-        mass += element.mass;
-        moment_of_inertia += element.mass * element.position;
-    }
+//     for (const auto &element : elements) {
+//         mass += element.mass;
+//         moment_of_inertia += element.mass * element.position;
+//     }
 
-    const auto center_of_gravity = moment_of_inertia / mass;
+//     const auto center_of_gravity = moment_of_inertia / mass;
 
-    for (auto &element : elements) {
-        if (!precomputed_offset) {
-            element.offset = element.position - center_of_gravity;
-        } else {
-            element.offset = element.position;
-        }
+//     for (auto &element : elements) {
+//         if (!precomputed_offset) {
+//             element.offset = element.position - center_of_gravity;
+//         } else {
+//             element.offset = element.position;
+//         }
 
-        const auto offset = element.offset;
+//         const auto offset = element.offset;
 
-        Ixx += element.inertia.x + element.mass * (sq(offset.y) + sq(offset.z));
-        Iyy += element.inertia.y + element.mass * (sq(offset.z) + sq(offset.x));
-        Izz += element.inertia.z + element.mass * (sq(offset.x) + sq(offset.y));
-        Ixy += element.mass * (offset.x * offset.y);
-        Ixz += element.mass * (offset.x * offset.z);
-        Iyz += element.mass * (offset.y * offset.z);
-    }
+//         Ixx += element.inertia.x + element.mass * (sq(offset.y) + sq(offset.z));
+//         Iyy += element.inertia.y + element.mass * (sq(offset.z) + sq(offset.x));
+//         Izz += element.inertia.z + element.mass * (sq(offset.x) + sq(offset.y));
+//         Ixy += element.mass * (offset.x * offset.y);
+//         Ixz += element.mass * (offset.x * offset.z);
+//         Iyz += element.mass * (offset.y * offset.z);
+//     }
 
-    if (cg != nullptr) {
-        *cg = center_of_gravity;
-    }
+//     if (cg != nullptr) {
+//         *cg = center_of_gravity;
+//     }
 
-    // clang-format off
-  return {
-      Ixx, -Ixy, -Ixz, 
-      -Ixy, Iyy, -Iyz, 
-      -Ixz, -Iyz, Izz
-  };
-    // clang-format on
-}
+//     // clang-format off
+//   return {
+//       Ixx, -Ixy, -Ixz, 
+//       -Ixy, Iyy, -Iyz, 
+//       -Ixz, -Iyz, Izz
+//   };
+//     // clang-format on
+// }
 
-}
+// }
+// =======
+
+// >>>>>>> master
 
 
 float delta_time = 0; //zmienna globalna określająca czas między klatkami
-
-float speed_x = 0;
-float speed_y = 0;
-float movement_x = 0;
 
 //zmienna wykorzystywana do zmiany rozmiaru okna
 float aspectRatio = 1.77777778;
 
 //zmienne globalne dotyczące kamery
 bool freecam = false;
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 200.0f);
+bool plane = false; 
+glm::vec3 cameraPos = glm::vec3(1000.0f, 300.0f, 1000.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 const glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-float cameraSpeed = 1.0f;
-float maxCamSpeed = 5.0f;
+float cameraSpeed = 150.0f;
+float maxCamSpeed = 500.0f;
 float mouseSensitivity = 0.09f;
 
 bool firstMouse = true;
 float lastX = 400, lastY = 300;
-float yaw = -90.0f, pitch = 0.0f;
+float yawx = -90.0f, pitchx = 0.0f;
 
 //zmienne globalne wykorzystywane w funkcjionalności freecam
 bool is_w_pressed = false;
 bool is_s_pressed = false;
 bool is_a_pressed = false;
 bool is_d_pressed = false;
+bool is_q_pressed = false;
+bool is_e_pressed = false;
 bool is_space_pressed = false;
 bool is_lctrl_pressed = false;
+bool is_lshift_pressed = false;
 bool is_esc_pressed = false;
 
 
 ShaderProgram* sp;
 
 // Uchwyty tekstur - deklaracje globalne
-GLuint tex0;
-GLuint tex1;
+GLuint airplaneTex;
+GLuint missileTex;
+GLuint heliTex;
+GLuint terrainTex;
+GLuint explosionTex;
 
 const int b_c = 10; // building_count - ile roznych budynkow jest
 //Uchwyty budynki
@@ -168,13 +178,22 @@ GLuint tex[b_c][2]; //uchwyty na budynki
 
 //std::vector<Mesh> sky_scrapers_mesh(4);
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
+Mesh missleMesh;
+Mesh helicopterMesh;
+Mesh terrainMesh;
+Mesh rotorMesh;
+
 
 int budynki_komb[b_c][b_c]; // uklad budynkow jakie i gdzie zostana narysowane
 float budynki_skala[b_c][b_c][2];
 
-const float mass = 5000.0f;
-const float thrust = 75000.0f;
 int losowa_liczba;
+
+const float mass = 10000.0f;
+const float thrust = 125000.0f;
+float throttle = 1.0f;
+
+
 const float wing_offset = 0.0f;
 const float tail_offset = -6.6f;
 
@@ -185,19 +204,51 @@ Engine mainEngine(thrust);
 
 std::vector<Wing> wings = {
     // Przykładowe skrzydło
-    Wing({ wing_offset, 0.0f, -2.7f }, 10.0f, 2.5f, &NACA_2412, UP, 0.20f),
-    Wing({ wing_offset, 0.0f, +2.7f }, 10.0f, 2.50f, &NACA_2412, UP, 0.20f), // right wing
+    Wing({ wing_offset, 0.0f, -5.7f }, 10.0f, 2.5f, &NACA_2412, UP, 0.20f), // left wing
+    Wing({ wing_offset, 0.0f, +5.7f }, 10.0f, 2.50f, &NACA_2412, UP, 0.20f), // right wing
+    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
+    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 0.15f), // rudder
     // Dodaj więcej skrzydeł według potrzeb
 };
 
-glm::mat3 testInertia = {
-    { 10000.0f, 0.0f, 0.0f },
-    { 0.0f, 20000.0f, 0.0f },
-    { 0.0f, 0.0f, 30000.0f }
+std::vector<Wing> wings2 = {
+    Wing({ wing_offset - 1.5f, 0.0f, -2.0f }, 3.80f, 1.26f, &NACA_0012, UP, 1.0f), // left aileron
+    Wing({ wing_offset - 1.5f, 0.0f, 2.0f }, 3.80f, 1.26f, &NACA_0012, UP, 1.0f), // right aileron
+    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
+    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 1.0f), // rudder
+    Wing({ wing_offset, 0.0f, -2.7f }, 15.0f, 2.5f, &NACA_2412, UP, 0.2f), // left wing
+    Wing({ wing_offset, 0.0f, +2.7f }, 15.0f, 2.50f, &NACA_2412, UP, 0.2f), // right wing
 };
 
+std::vector<Wing> wings3 = {
+    Wing({ wing_offset, 0.0f, -2.7f }, 6.96f, 2.70f, &NACA_2412, UP, 0.20f), // left wing
+    Wing({ wing_offset, 0.0f, +2.7f }, 6.96f, 2.70f, &NACA_2412, UP, 0.20f), // right wing
+    Wing({ tail_offset, -0.1f, 0.0f }, 6.54f, 2.70f, &NACA_0012, UP, 1.0f), // elevator
+    Wing({ tail_offset, 0.0f, 0.0f }, 5.31f, 3.10f, &NACA_0012, RIGHT, 0.15f), // rudder
+};
 
-Airplane mainAirplane(mass, mainEngine, testInertia, wings);
+glm::mat3 giveninertia = {
+    48531.0f, -1320.0f, 0.0f,
+    -1320.0f, 256608.0f, 0.0f,
+    0.0f, 0.0f, 211333.0f
+};
+
+glm::mat3 testinertia = {
+    10000.0f, -1320.0f, 0.0f,
+    -1320.0f, 20000.0f, 0.0f,
+    0.0f, 0.0f, 30000.0f
+};
+
+glm::vec3 initialPos(-2000.0f, 100.0f, 1000.0f);
+
+Airplane mainAirplane(mass, mainEngine, giveninertia, wings2, initialPos);
+
+Airplane testAirplane(mass, mainEngine, testinertia, wings, glm::vec3(0.0f, 1000.0f, 0.0f));
+
+Engine heliEngine(15500.0f);
+float heliMass = 750.0f;
+Helicopter mainHelicopter(heliMass, heliEngine, testinertia, initialPos);
+
 
 
 GLuint read_texture_building(const char* filename) {
@@ -261,19 +312,26 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     float velocity = cameraSpeed * delta_time;
 
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_LEFT) speed_x = -PI;
-        if (key == GLFW_KEY_RIGHT) speed_x = PI;
-        if (key == GLFW_KEY_UP) speed_y = PI;
-        if (key == GLFW_KEY_DOWN) speed_y = -PI;
+
         // if (key == GLFW_KEY_W) movement_x = 150;
-        // if (key == GLFW_KEY_S) movement_x = -150;    
+        // if (key == GLFW_KEY_S) movement_x = -150;
         if (key == GLFW_KEY_F) freecam = !freecam;
-        if (key == GLFW_KEY_W && freecam) is_w_pressed = true;
-        if (key == GLFW_KEY_S && freecam) is_s_pressed = true;
-        if (key == GLFW_KEY_A && freecam) is_a_pressed = true;
-        if (key == GLFW_KEY_D && freecam) is_d_pressed = true;
-        if (key == GLFW_KEY_SPACE && freecam) is_space_pressed = true;
-        if (key == GLFW_KEY_LEFT_CONTROL && freecam) is_lctrl_pressed = true;
+        if (key == GLFW_KEY_W) is_w_pressed = true;
+        if (key == GLFW_KEY_S) is_s_pressed = true;
+        if (key == GLFW_KEY_A) is_a_pressed = true;
+        if (key == GLFW_KEY_D) is_d_pressed = true;
+        if (key == GLFW_KEY_Q) is_q_pressed = true;
+        if (key == GLFW_KEY_E) is_e_pressed = true;
+        if (key == GLFW_KEY_X) {
+            if (plane && !freecam) {
+                mainAirplane.fireMissile();
+            } else if (!freecam) {
+                mainHelicopter.fireMissile();
+            }
+        }
+        if (key == GLFW_KEY_SPACE) is_space_pressed = true;
+        if (key == GLFW_KEY_LEFT_CONTROL) is_lctrl_pressed = true;
+        if (key == GLFW_KEY_LEFT_SHIFT) is_lshift_pressed = true;
 
         if (key == GLFW_KEY_ESCAPE) {
             is_esc_pressed = !is_esc_pressed;
@@ -287,25 +345,23 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     }
 
     if (action == GLFW_RELEASE) {
-        if (key == GLFW_KEY_LEFT) speed_x = 0;
-        if (key == GLFW_KEY_RIGHT) speed_x = 0;
-        if (key == GLFW_KEY_UP) speed_y = 0;
-        if (key == GLFW_KEY_DOWN) speed_y = 0;
-
-        if (key == GLFW_KEY_W && freecam) is_w_pressed = false;
-        if (key == GLFW_KEY_S && freecam) is_s_pressed = false;
-        if (key == GLFW_KEY_A && freecam) is_a_pressed = false;
-        if (key == GLFW_KEY_D && freecam) is_d_pressed = false;
-        if (key == GLFW_KEY_SPACE && freecam) is_space_pressed = false;
-        if (key == GLFW_KEY_LEFT_CONTROL && freecam) is_lctrl_pressed = false;
+        if (key == GLFW_KEY_W) is_w_pressed = false;
+        if (key == GLFW_KEY_S) is_s_pressed = false;
+        if (key == GLFW_KEY_A) is_a_pressed = false;
+        if (key == GLFW_KEY_D) is_d_pressed = false;
+        if (key == GLFW_KEY_Q) is_q_pressed = false;
+        if (key == GLFW_KEY_E) is_e_pressed = false;
+        if (key == GLFW_KEY_SPACE) is_space_pressed = false;
+        if (key == GLFW_KEY_LEFT_CONTROL) is_lctrl_pressed = false;
+        if (key == GLFW_KEY_LEFT_SHIFT) is_lshift_pressed = false;
     }
 }
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     if (yoffset > 0) {
-        cameraSpeed += 0.05f;
+        cameraSpeed += 0.75f;
     } else if (yoffset < 0) {
-        cameraSpeed = std::max(0.1f, cameraSpeed - 0.1f);
+        cameraSpeed = std::max(0.1f, cameraSpeed - 0.75f);
     }
     if (cameraSpeed > maxCamSpeed) cameraSpeed = maxCamSpeed;
 }
@@ -326,19 +382,45 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     xoffset *= mouseSensitivity;
     yoffset *= mouseSensitivity;
 
-    yaw += xoffset;
-    pitch += yoffset;
+    yawx += xoffset;
+    pitchx += yoffset;
 
-    if (pitch > 89.0f)  pitch = 89.0f;
-    if (pitch < -89.0f) pitch = -89.0f;
+    if (pitchx > 89.0f)  pitchx = 89.0f;
+    if (pitchx < -89.0f) pitchx = -89.0f;
 
     glm::vec3 front;
-    front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-    front.y = sin(glm::radians(pitch));
-    front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+    front.x = cos(glm::radians(pitchx)) * cos(glm::radians(yawx));
+    front.y = sin(glm::radians(pitchx));
+    front.z = cos(glm::radians(pitchx)) * sin(glm::radians(yawx));
     cameraFront = glm::normalize(front);
 }
 
+/*
+void drawTerrain(ShaderProgram *sp, Mesh *bodyMesh, GLuint tex0) {
+    glm::mat4 M = glm::mat4(1.0f);
+    // M = glm::scale(M, glm::vec3(10.0f, 10.0f, 10.0f));
+
+    glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+
+    glEnableVertexAttribArray(sp->a("vertex"));
+    glVertexAttribPointer(sp->a("vertex"), 3, GL_FLOAT, false, 0, bodyMesh->vertices.data());
+
+    glEnableVertexAttribArray(sp->a("normal"));
+    glVertexAttribPointer(sp->a("normal"), 3, GL_FLOAT, false, 0, bodyMesh->normals.data());
+
+    glEnableVertexAttribArray(sp->a("texCoord0"));
+    glVertexAttribPointer(sp->a("texCoord0"), 2, GL_FLOAT, false, 0, bodyMesh->texCoords.data());
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex0);
+
+    glDrawArrays(GL_TRIANGLES, 0, bodyMesh->vertices.size());
+
+    glDisableVertexAttribArray(sp->a("vertex"));
+    glDisableVertexAttribArray(sp->a("normal"));
+    glDisableVertexAttribArray(sp->a("texCoord0"));
+}
+*/
 void windowResizeCallback(GLFWwindow* window, int width, int height) {
     if (height == 0) return;
     aspectRatio = (float)width / (float)height;
@@ -361,6 +443,8 @@ void initOpenGLProgram(GLFWwindow *window) {
     //************Tutaj umieszczaj kod, który należy wykonać raz, na początku programu************
     glClearColor(0.2, 0.2, 1, 1);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glfwSetWindowSizeCallback(window, windowResizeCallback);
     glfwSetKeyCallback(window, keyCallback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -369,11 +453,26 @@ void initOpenGLProgram(GLFWwindow *window) {
 
     sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl"); 
 
-    tex0 = readTexture("F-16_Airframe_BaseColorFinalized.png");
-    tex1 = readTexture("/models/textures/sky.png");
-    
+    airplaneTex = readTexture("F-16_Airframe_BaseColorFinalized.png");
+    missileTex = readTexture("rocket.png");
+    heliTex = readTexture("heli_outside_skin_2.tga.png");
+    terrainTex = readTexture("colormap.png");
+    explosionTex = readTexture("explosion.png");
+
     ModelLoader loader;
     airplaneMesh = loader.loadModel("models/source/F-16.obj");
+    missleMesh = loader.loadModel("models/source/rocket.3ds");
+    helicopterMesh = loader.loadModel("models/source/Large_Helicopter2.blend");
+    terrainMesh = loader.loadModel("models/source/lowres-model.obj");
+    rotorMesh = loader.loadModel("models/source/rotor.obj");
+}
+
+glm::vec4 sunPosition = glm::vec4(1000, 10000, 0, 1);
+glm::vec3 sunColor = glm::vec3(1.0f, 1.0f, 1.0f);
+glm::vec4 secondLightPosition = glm::vec4(100, 1000, 0, 1);
+glm::vec3 secondLightColor = glm::vec3(1.0f, 0.0f, 0.0f);
+float ambientStrength = 0.1f;
+float secondIntensity = 10.0f;
 
     //wczytywanie i import obrazka
     tex[0][0] = read_texture_building("images2/building0.png");
@@ -417,44 +516,123 @@ void initOpenGLProgram(GLFWwindow *window) {
     
 }
 //Procedura rysująca zawartość sceny
-void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_movement_x) {
+void drawScene(GLFWwindow *window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
+
     glm::mat4 V;
+    glm::vec3 viewPos;
 
     if (freecam) {
         updateCameraPosition();
         V = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-    } else {
+        viewPos = cameraPos;
+        gravity(cameraPos);
+    } else if (plane) {
+        gravity(mainAirplane.position);
         glm::vec3 planeCamPos = mainAirplane.position + mainAirplane.orientation * glm::vec3(-200.0f, 10.0f, 0.0f);
         glm::vec3 planeCamlookAtPoint = mainAirplane.position;
         glm::vec3 planeCamUp = mainAirplane.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
         V = glm::lookAt(planeCamPos, planeCamlookAtPoint, planeCamUp);
+        viewPos = cameraPos;
+    } else {
+        gravity(mainHelicopter.position);
+        glm::vec3 planeCamPos = mainHelicopter.position + mainHelicopter.orientation * glm::vec3(-300.0f, 15.0f, 0.0f);
+        glm::vec3 planeCamlookAtPoint = mainHelicopter.position;
+        glm::vec3 planeCamUp = mainHelicopter.orientation * glm::vec3(0.0f, 1.0f, 0.0f);
+        V = glm::lookAt(planeCamPos, planeCamlookAtPoint, planeCamUp);
+        viewPos = cameraPos;
+    }
+
+    if (!freecam) {
+        if (is_w_pressed) {
+            throttle += 0.001;
+            throttle = glm::clamp(throttle, 0.0f, 1.0f);
+            mainAirplane.control_throttle = throttle;
+            mainHelicopter.throttle = throttle;
+
+        } else if (is_s_pressed) {
+            throttle -= 0.001;
+            throttle = glm::clamp(throttle, 0.0f, 1.0f);
+            mainAirplane.control_throttle = throttle;
+            mainHelicopter.throttle = throttle;
+        }
+
+        if (is_a_pressed) {
+            mainAirplane.aileron = -1;
+            mainHelicopter.applyInput('a', delta_time);
+        } else if (is_d_pressed) {
+            mainAirplane.aileron = 1;
+            mainHelicopter.applyInput('d', delta_time);
+        } else {
+            mainAirplane.aileron = 0;
+        }
+        if (is_q_pressed) {
+            mainAirplane.rudder = -1;
+            mainHelicopter.applyInput('q', delta_time);
+        } else if (is_e_pressed) {
+            mainAirplane.rudder = 1;
+            mainHelicopter.applyInput('e', delta_time);
+        } else {
+            mainAirplane.rudder = 0;
+        }
+
+        if (is_lshift_pressed) {
+            mainAirplane.elevator = 1;
+            mainHelicopter.applyInput('w', delta_time);
+        } else if (is_lctrl_pressed) {
+            mainAirplane.elevator = -1;
+            mainHelicopter.applyInput('s', delta_time);
+        } else {
+            mainAirplane.elevator = 0;
+        }
     }
 
     glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 50.0f, 5000.0f);
 
-    glm::vec4 lp = glm::vec4(0, 6, 0, 1);
+    secondLightPosition = glm::vec4(mainHelicopter.position + glm::vec3(-10.0f, 10.0f, 0.0f), 1.0f);
 
     sp->use();
     glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
     glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
-    glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
+    glUniform4fv(sp->u("sunPosition"), 1, glm::value_ptr(sunPosition));
+    glUniform3fv(sp->u("sunColor"), 1, glm::value_ptr(sunColor));
+    glUniform4fv(sp->u("secondLightPosition"), 1, glm::value_ptr(secondLightPosition));
+    glUniform3fv(sp->u("secondLightColor"), 1, glm::value_ptr(secondLightColor));
+    glUniform1f(sp->u("ambientStrength"), ambientStrength);
+    glUniform1f(sp->u("secondLightIntensity"), secondIntensity);
+    glUniform3fv(sp->u("viewPos"), 1, glm::value_ptr(viewPos));
     glUniform1i(sp->u("textureMap0"), 0);
     glUniform1i(sp->u("textureMap1"), 1);
     glUniform1f(sp->u("lightIntensity"), 1.25f);
+
     
-    glm::mat4 Mplane = glm::mat4(1.0f);
-    Mplane = glm::rotate(Mplane, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));
-    Mplane = glm::rotate(Mplane, angle_x, glm::vec3(0.0f, 1.0f, 0.0f));
-    Mplane = glm::translate(Mplane, glm::vec3(given_movement_x, 0.0f, 0.0f));
+   // glm::mat4 Mplane = glm::mat4(1.0f);
+   // Mplane = glm::rotate(Mplane, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));
+  //  Mplane = glm::rotate(Mplane, angle_x, glm::vec3(0.0f, 1.0f, 0.0f));
+    //Mplane = glm::translate(Mplane, glm::vec3(given_movement_x, 0.0f, 0.0f));
     // drawAirplane(Mplane);
     
     //z pliku flight model.h
-    mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, tex0, tex1);
+   // mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, tex0, tex1);
     //z pliku buildings.cpp
     build_city(b_c, tex, budynki_komb, budynki_skala, sp,losowa_liczba);
     
+
+
+    drawTerrain(sp, &terrainMesh, terrainTex);
+
+    // testAirplane.drawAirplane(0, sp, &airplaneMesh, &missleMesh, airplaneTex, airplaneTex);
+
+
+    if (plane && !freecam) {
+        mainAirplane.update(delta_time);
+        mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, &missleMesh, airplaneTex, missileTex);
+    } else if (!plane) {
+        mainHelicopter.updateHeli(delta_time);
+        mainHelicopter.drawHelicopter(delta_time, V, sp, &helicopterMesh, &rotorMesh, &missleMesh, heliTex, missileTex, explosionTex);
+    }
+
+
     glfwSwapBuffers(window);
 }
 
@@ -503,18 +681,16 @@ int main(void)
     initOpenGLProgram(window); //Operacje inicjujące
 
     //Główna pętla
-    float angle_x = 0; //Aktualny kąt obrotu obiektu
-    float angle_y = 0; //Aktualny kąt obrotu obiektu
-    float given_movement_x = 0;
+    float prev_time = glfwGetTime();
     glfwSetTime(0); //Zeruj timer
     while (!glfwWindowShouldClose(window)) //Tak długo jak okno nie powinno zostać zamknięte
     {
-        delta_time += glfwGetTime();
-        angle_x += speed_x * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
-        angle_y += speed_y * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
-        given_movement_x += movement_x * glfwGetTime();
-        glfwSetTime(0); //Zeruj timer
-        drawScene(window, angle_x, angle_y, given_movement_x); // Wykonaj procedurę rysującą
+        float current_time = glfwGetTime(); 
+        delta_time = current_time - prev_time;
+        prev_time = current_time;
+
+        //glfwSetTime(0); //Zeruj timer
+        drawScene(window); // Wykonaj procedurę rysującą
         glfwPollEvents(); //Wykonaj procedury callback w zalezności od zdarzeń jakie zaszły.
     }
 

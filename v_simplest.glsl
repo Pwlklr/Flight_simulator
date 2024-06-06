@@ -1,35 +1,40 @@
-#version 330
+#version 330 core
 
-//Zmienne jednorodne
-uniform mat4 P;     // Projekcja
-uniform mat4 V;     // Widok
-uniform mat4 M;     // Model
-uniform vec4 lp;    // Pozycja œwiat³a w przestrzeni œwiata
+// Uniforms
+uniform mat4 P;     // Projection matrix
+uniform mat4 V;     // View matrix
+uniform mat4 M;     // Model matrix
+uniform vec4 sunPosition; // Position of the sun in world space
+uniform vec4 secondLightPosition; // Position of the second light source in world space
 
+// Attributes
+in vec4 vertex;    // Vertex coordinates in model space
+in vec4 normal;    // Normal vector in model space
+in vec2 texCoord0;  // Texture coordinates
 
-//Atrybuty
-in vec4 vertex; //wspolrzedne wierzcholka w przestrzeni modelu
-in vec4 color; //kolor zwi¹zany z wierzcho³kiem
-in vec4 normal; //wektor normalny w przestrzeni modelu
-in vec2 texCoord0;
+// Interpolated outputs to fragment shader
+out vec3 fragPosition; // Position of the fragment in world space
+out vec3 fragNormal;   // Normal vector of the fragment in world space
+out vec2 fragTexCoord; // Texture coordinates
+out vec3 lightDir;     // Direction to the light source
+out vec3 secondLightDir;     // Direction to the light source
 
-//Zmienne interpolowane
-out vec4 ic;
-out vec4 l;
-out vec4 n;
-out vec4 v;
-out vec2 iTexCoord0; 
-out vec2 iTexCoord1;
-
-void main(void) {
-    l = normalize(V * lp - V*M*vertex); //wektor do œwiat³a w przestrzeni oka
-    v = normalize(vec4(0, 0, 0, 1) - V * M * vertex); //wektor do obserwatora w przestrzeni oka
-    n = normalize(V * M * normal); //wektor normalny w przestrzeni oka
+void main() {
+    // Transform vertex position to world space
+    vec4 worldPosition = M * vertex;
+    fragPosition = vec3(worldPosition);
     
-    iTexCoord0 = texCoord0;
-    iTexCoord1 = (n.xy + 1) / 2;
-
-    ic = color;
+    // Transform normal vector to world space
+    fragNormal = mat3(transpose(inverse(M))) * vec3(normal);
     
-    gl_Position=P*V*M*vertex;
+    // Pass texture coordinates to fragment shader
+    fragTexCoord = texCoord0;
+    
+    // Calculate light direction
+    lightDir = vec3(sunPosition) - fragPosition;
+    secondLightDir = vec3(secondLightPosition) - fragPosition;
+
+    
+    // Transform vertex position to clip space
+    gl_Position = P * V * worldPosition;
 }

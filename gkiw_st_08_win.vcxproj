@@ -21,14 +21,18 @@
   <ItemGroup>
     <ClInclude Include="building1.h" />
     <ClInclude Include="builds.h" />
+    <ClInclude Include="Colission.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="FlightModel.h" />
+    <ClInclude Include="Helicopter.h" />
     <ClInclude Include="lodepng.h" />
+    <ClInclude Include="Missle.h" />
     <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="RigidBody.h" />
     <ClInclude Include="shaderprogram.h" />
     <ClInclude Include="myCube.h" />
     <ClInclude Include="myTeapot.h" />
+    <ClInclude Include="Terrain.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="buildings.cpp" />
