@@ -33,6 +33,8 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include <assimp/postprocess.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <random>
+#include <ctime>
 
 #include "ModelLoader.h"
 #include "constants.h"
@@ -41,6 +43,8 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "myCube.h"
 #include "myTeapot.h"
 #include "FlightModel.h"
+#include "builds.h"
+//#include "building1.h"
 
 
 namespace inertia {
@@ -157,12 +161,20 @@ ShaderProgram* sp;
 GLuint tex0;
 GLuint tex1;
 
+const int b_c = 10; // building_count - ile roznych budynkow jest
+//Uchwyty budynki
+GLuint tex[b_c][2]; //uchwyty na budynki
 
+
+//std::vector<Mesh> sky_scrapers_mesh(4);
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
+
+int budynki_komb[b_c][b_c]; // uklad budynkow jakie i gdzie zostana narysowane
+float budynki_skala[b_c][b_c][2];
 
 const float mass = 5000.0f;
 const float thrust = 75000.0f;
-
+int losowa_liczba;
 const float wing_offset = 0.0f;
 const float tail_offset = -6.6f;
 
@@ -188,6 +200,35 @@ glm::mat3 testInertia = {
 Airplane mainAirplane(mass, mainEngine, testInertia, wings);
 
 
+GLuint read_texture_building(const char* filename) {
+    GLuint tex;
+    glActiveTexture(GL_TEXTURE0);
+    //wczytanie do pamięci komputera
+    std::vector<unsigned char> image;
+    unsigned width, height;
+    //wczytujemy obrazek do pamieci komputera
+    unsigned error = lodepng::decode(image, width, height, filename);
+
+   
+    if (error) 
+    {
+        std::cerr << "Error loading texture: " << lodepng_error_text(error) << std::endl;
+        return 0; // Zwróć 0, aby wskazać błąd wczytywania tekstury
+    }
+    
+    //GLuint tex[10]; 10,&tex //10 uchwytow
+    //import do pamieci graficznej
+    glGenTextures(1, &tex); // jeden uchwyt &tex - tablica zmiennych przechowujaca nowe uchwyty
+    glBindTexture(GL_TEXTURE_2D, tex); // uaktywnij uchwyt
+    //kopiuje obrazek z pamieci komputera do pamieci gpu reprezentowanej przez uchwyt
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,// 24 bitowy - GL_RGB
+            GL_RGBA, GL_UNSIGNED_BYTE, (unsigned char *)image.data()); //image.data wskaznik na dane tekstury
+    //wybieramy algorytm probkowania kolorow
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+ 
+    return tex;
+}
 
 GLuint readTexture(const char *filename) {
     GLuint tex;
@@ -330,12 +371,51 @@ void initOpenGLProgram(GLFWwindow *window) {
 
     tex0 = readTexture("F-16_Airframe_BaseColorFinalized.png");
     tex1 = readTexture("/models/textures/sky.png");
-
+    
     ModelLoader loader;
     airplaneMesh = loader.loadModel("models/source/F-16.obj");
+
+    //wczytywanie i import obrazka
+    tex[0][0] = read_texture_building("images2/building0.png");
+    tex[0][1] = read_texture_building("models/textures/dach0.png");
+    tex[1][0] = read_texture_building("images2/building1.png");
+    tex[1][1] = read_texture_building("models/textures/dach1.png");
+    tex[2][0] = read_texture_building("images2/building2.png");
+    tex[2][1] = read_texture_building("models/textures/dach2.png");
+    tex[3][0] = read_texture_building("images2/building3.png");
+    tex[3][1] = read_texture_building("models/textures/dach3.png");
+    tex[4][0] = read_texture_building("images2/building4.png");
+    tex[4][1] = read_texture_building("models/textures/dach4.png");
+    tex[5][0] = read_texture_building("images2/building5.png");
+    tex[5][1] = read_texture_building("models/textures/dach5.png");
+    tex[6][0] = read_texture_building("images2/building6.png");
+    tex[6][1] = read_texture_building("models/textures/dach6.png");
+    tex[7][0] = read_texture_building("images2/building7.png");
+    tex[7][1] = read_texture_building("models/textures/dach7.png");
+    tex[8][0] = read_texture_building("images2/building8.png");
+    tex[8][1] = read_texture_building("models/textures/dach8.png");
+    tex[9][0] = read_texture_building("images2/building9.png");
+    tex[9][1] = read_texture_building("models/textures/dach9.png");
+    std::random_device rd1;
+    std::mt19937 gen1(rd1());
+    std::uniform_int_distribution<> dis1(10000, 99999);
+    losowa_liczba = dis1(gen1);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, b_c-1);
+    std::uniform_real_distribution<> distrib_real(0.8, 1.2);
+    for (int i = 0; i < b_c; i++) 
+    {
+        for (int j = 0; j < b_c; j++)
+        {
+            budynki_komb[i][j] = distrib(gen);
+            budynki_skala[i][j][0] = distrib_real(gen);
+            budynki_skala[i][j][1] = distrib_real(gen);
+        }
+    }
+    
 }
-
-
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_movement_x) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -369,8 +449,12 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
     Mplane = glm::rotate(Mplane, angle_x, glm::vec3(0.0f, 1.0f, 0.0f));
     Mplane = glm::translate(Mplane, glm::vec3(given_movement_x, 0.0f, 0.0f));
     // drawAirplane(Mplane);
+    
+    //z pliku flight model.h
     mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, tex0, tex1);
-
+    //z pliku buildings.cpp
+    build_city(b_c, tex, budynki_komb, budynki_skala, sp,losowa_liczba);
+    
     glfwSwapBuffers(window);
 }
 
@@ -378,6 +462,12 @@ void drawScene(GLFWwindow *window, float angle_x, float angle_y, float given_mov
 void freeOpenGLProgram(GLFWwindow *window) {
     //************Tutaj umieszczaj kod, który należy wykonać po zakończeniu pętli głównej************
 
+    for (int i = 0; i < 10; ++i)
+    {
+        glDeleteTextures(2, tex[i]);
+    }
+    glDisableVertexAttribArray(sp->a("vertex"));
+    glDisableVertexAttribArray(sp->a("texCoord0"));
     delete sp;
 }
 

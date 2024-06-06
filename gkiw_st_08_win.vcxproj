@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="building1.h" />
+    <ClInclude Include="builds.h" />
     <ClInclude Include="constants.h" />
     <ClInclude Include="FlightModel.h" />
     <ClInclude Include="lodepng.h" />
@@ -29,6 +31,7 @@
     <ClInclude Include="myTeapot.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="buildings.cpp" />
     <ClCompile Include="lodepng.cpp" />
     <ClCompile Include="main_file.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
