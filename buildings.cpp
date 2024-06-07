@@ -52,20 +52,31 @@ void build_sufit(GLuint tex, ShaderProgram *sp, glm::mat4 M1) {
     glDrawArrays(GL_TRIANGLES, 0, sufit_VertexCount1);
 }
 
-
 void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_skala[][10][2], ShaderProgram *sp,int losowa_liczba) {
     int srodkowe = 3;
     
     // Generowanie losowej liczby 5-cyfrowej
-  
+    
     glm::mat4 M1 = glm::mat4(1.0f);
-    M1 = glm::scale(M1, glm::vec3(2.0f, 2.0f, 2.0f));
+    M1 = glm::translate(M1, glm::vec3(-1700.0f, 260.0f, 750.0f));
+    // PODLOGA
+    glm::mat4 Podloga = M1;
+    Podloga = glm::translate(Podloga, glm::vec3(550.0f, -90.0f, 550.0f));
+    Podloga = glm::scale(Podloga, glm::vec3(35.0f, 1.5f, 35.0f));
+    build(tex[10][0], sp, Podloga);
+    build_sufit(tex[10][0], sp, Podloga);
+    //Koniec podloga
+    M1 = glm::mat4(1.0f);
+    M1 = glm::translate(M1, glm::vec3(-1700.0f, 230.0f, 750.0f));
+    M1 = glm::scale(M1, glm::vec3(1.5f, 1.5f, 1.5f));
     for (int i = 0; i < b_c; i++) {
-        for (int j = 0; j < b_c; j++) {
+        for (int j = 0; j < 8; j++) {
+    //glm::mat4 M1 = glm::mat4(1.0f);
+    //M1 = glm::scale(M1, glm::vec3(2.0f, 2.0f, 2.0f));
+    //for (int i = 0; i < b_c; i++) {
+        //for (int j = 0; j < b_c; j++) {
             M1 = glm::scale(M1, glm::vec3(budynki_skala[i][j][0], 1.0f, budynki_skala[i][j][1]));
             if (i <= 3 || i >= 6 || j < srodkowe || j >= b_c - srodkowe) {
-
-
                 if (j < srodkowe && i > 3 && i < 6) {
                     build(tex[budynki_komb[i][j]][0], sp, M1);
                     // jesli to jest ten co ma byc wiekszy translacja wyzej i budowa TRANSLACJA potem nizej zeby wrocic PO SUFICIE aktualnie kazdy budynek ma wysokosc 40 stad translacia o 40 w gore
@@ -78,7 +89,7 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
                         M1 = glm::translate(M1, glm::vec3(0.0f, -40.0f, 0.0f));
                     }
                     build_sufit(tex[budynki_komb[i][j]][1], sp, M1);
-                    M1 = glm::translate(M1, glm::vec3(100.0f, 0.0f, 0.0f));
+                    M1 = glm::translate(M1, glm::vec3(88.0f, 0.0f, 0.0f));
                 }
                 if (j >= b_c - srodkowe && i > 3 && i < 6) {//TO SPRAWIA ZE SA DALEKO 
                    // M1 = glm::translate(M1, glm::vec3(100.0f * (j - srodkowe), 0.0f, 0.0f));//TO SPRAWIA ZE SA DALEKO jak odkomentuje beda daleko
@@ -93,7 +104,7 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
                     }
                     build_sufit(tex[budynki_komb[i][j]][1], sp, M1);
                  //   M1 = glm::translate(M1, glm::vec3(-100.0f * (j - srodkowe), 0.0f, 0.0f));//TO SPRAWIA ZE SA DALEKO  jak odkomentuje beda daleko
-                    M1 = glm::translate(M1, glm::vec3(100.0f, 0.0f, 0.0f));
+                    M1 = glm::translate(M1, glm::vec3(88.0f, 0.0f, 0.0f));
                 }
                 if (i <= 3 || i >= 6) {
 
@@ -110,7 +121,8 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
                         M1 = glm::translate(M1, glm::vec3(0.0f, -40.0f, 0.0f));
                     }
                     build_sufit(tex[budynki_komb[i][j]][1], sp, M1);
-                    M1 = glm::translate(M1, glm::vec3(100.0f, 0.0f, 0.0f));
+                    M1 = glm::translate(M1, glm::vec3(88.0f, 0.0f, 0.0f));
+
                 }
                
             }
@@ -118,7 +130,7 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
             if (j >= srodkowe + 1 && j < b_c - srodkowe -1  && i > 3 && i < 6 ) 
             {
                 int nr=0;
-                M1 = glm::translate(M1, glm::vec3(50.0f, 0.0f, 0.0f));
+                M1 = glm::translate(M1, glm::vec3(40.0f, 0.0f, 0.0f));
                 glm::mat4 M_POM = M1;
                 if (losowa_liczba % 4 == 0)
                 {
@@ -172,12 +184,14 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
                     build_sufit(tex[nr][1], sp, M1);
                 }
                 M1 = M_POM;
-                M1 = glm::translate(M1, glm::vec3(100.0f, 0.0f, 0.0f));
+                M1 = glm::translate(M1, glm::vec3(88.0f, 0.0f, 0.0f));
+
                 
             }
         }
         M1 = glm::mat4(1.0f);
-        M1 = glm::scale(M1, glm::vec3(2.0f, 2.0f, 2.0f));
-        M1 = glm::translate(M1, glm::vec3(0.0f, 0.0f, 100.0f * (1 + i)));
+        M1 = glm::translate(M1, glm::vec3(-1700.0f, 230.0f, 750.0f));
+        M1 = glm::scale(M1, glm::vec3(1.5f, 1.5f, 1.5f));
+        M1 = glm::translate(M1, glm::vec3(0.0f, 0.0f, 88.0f * (1 + i)));
     }
 }
