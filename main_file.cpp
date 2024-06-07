@@ -43,9 +43,94 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "myCube.h"
 #include "myTeapot.h"
 #include "FlightModel.h"
+#include "builds.h"
 #include "Colission.h"
 #include "Terrain.h"
 #include "builds.h"
+
+// <<<<<<< Miasto_Generator
+
+// //#include "building1.h"
+
+
+// namespace inertia {
+
+// template <typename T>
+// constexpr inline T sq(T x) {
+//     return x * x;
+// }
+
+// // mass element used for inertia tensor calculation
+// struct Element {
+//     glm::vec3 size;
+//     glm::vec3 position; // position in design coordinates
+//     glm::vec3 inertia; // moment of inertia
+//     glm::vec3 offset; // offset from center of gravity
+//     float mass;
+//     float volume() const { return size.x * size.y * size.z; }
+// };
+
+// // cuboid moment of inertia
+// inline glm::vec3 cuboid(float mass, const glm::vec3 &size) {
+//     float x = size.x, y = size.y, z = size.z;
+//     return glm::vec3(sq(y) + sq(z), sq(x) + sq(z), sq(x) + sq(y)) * (1.0f / 12.0f) * mass;
+// }
+
+// // helper function for the creation of a cuboid mass element
+// inline Element cube(const glm::vec3 &position, const glm::vec3 &size, float mass = 0.0f) {
+//     glm::vec3 inertia = cuboid(mass, size);
+//     return { size, position, inertia, position, mass };
+// }
+// // calculate inertia tensor for a collection of connected masses
+// inline glm::mat3 tensor(std::vector<Element> &elements, bool precomputed_offset = false, glm::vec3 *cg = nullptr) {
+//     float Ixx = 0, Iyy = 0, Izz = 0;
+//     float Ixy = 0, Ixz = 0, Iyz = 0;
+
+//     float mass = 0;
+//     glm::vec3 moment_of_inertia(0.0f);
+
+//     for (const auto &element : elements) {
+//         mass += element.mass;
+//         moment_of_inertia += element.mass * element.position;
+//     }
+
+//     const auto center_of_gravity = moment_of_inertia / mass;
+
+//     for (auto &element : elements) {
+//         if (!precomputed_offset) {
+//             element.offset = element.position - center_of_gravity;
+//         } else {
+//             element.offset = element.position;
+//         }
+
+//         const auto offset = element.offset;
+
+//         Ixx += element.inertia.x + element.mass * (sq(offset.y) + sq(offset.z));
+//         Iyy += element.inertia.y + element.mass * (sq(offset.z) + sq(offset.x));
+//         Izz += element.inertia.z + element.mass * (sq(offset.x) + sq(offset.y));
+//         Ixy += element.mass * (offset.x * offset.y);
+//         Ixz += element.mass * (offset.x * offset.z);
+//         Iyz += element.mass * (offset.y * offset.z);
+//     }
+
+//     if (cg != nullptr) {
+//         *cg = center_of_gravity;
+//     }
+
+//     // clang-format off
+//   return {
+//       Ixx, -Ixy, -Ixz, 
+//       -Ixy, Iyy, -Iyz, 
+//       -Ixz, -Iyz, Izz
+//   };
+//     // clang-format on
+// }
+
+// }
+// =======
+
+// >>>>>>> master
+
 
 float delta_time = 0; //zmienna globalna określająca czas między klatkami
 
@@ -91,6 +176,9 @@ const int b_c = 10; // building_count - ile roznych budynkow jest
 // Uchwyty budynki
 GLuint tex[11][2]; // uchwyty na budynki
 
+
+
+//std::vector<Mesh> sky_scrapers_mesh(4);
 Mesh airplaneMesh; //struktura ModelLoader, deklarować dla wszystkich wczytywanych modeli
 Mesh missleMesh;
 Mesh helicopterMesh;
@@ -102,6 +190,7 @@ float budynki_skala[b_c][b_c][2];
 const float mass = 10000.0f;
 const float thrust = 125000.0f;
 float throttle = 1.0f;
+
 
 const float wing_offset = 0.0f;
 const float tail_offset = -6.6f;
@@ -183,6 +272,7 @@ GLuint read_texture_building(const char *filename) {
     // wybieramy algorytm probkowania kolorow
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 
     return tex;
 }
@@ -419,6 +509,47 @@ glm::vec3 secondLightColor = glm::vec3(1.0f, 0.0f, 0.0f);
 float ambientStrength = 0.1f;
 float secondIntensity = 10.0f;
 
+    //wczytywanie i import obrazka
+    tex[0][0] = read_texture_building("images2/building0.png");
+    tex[0][1] = read_texture_building("models/textures/dach0.png");
+    tex[1][0] = read_texture_building("images2/building1.png");
+    tex[1][1] = read_texture_building("models/textures/dach1.png");
+    tex[2][0] = read_texture_building("images2/building2.png");
+    tex[2][1] = read_texture_building("models/textures/dach2.png");
+    tex[3][0] = read_texture_building("images2/building3.png");
+    tex[3][1] = read_texture_building("models/textures/dach3.png");
+    tex[4][0] = read_texture_building("images2/building4.png");
+    tex[4][1] = read_texture_building("models/textures/dach4.png");
+    tex[5][0] = read_texture_building("images2/building5.png");
+    tex[5][1] = read_texture_building("models/textures/dach5.png");
+    tex[6][0] = read_texture_building("images2/building6.png");
+    tex[6][1] = read_texture_building("models/textures/dach6.png");
+    tex[7][0] = read_texture_building("images2/building7.png");
+    tex[7][1] = read_texture_building("models/textures/dach7.png");
+    tex[8][0] = read_texture_building("images2/building8.png");
+    tex[8][1] = read_texture_building("models/textures/dach8.png");
+    tex[9][0] = read_texture_building("images2/building9.png");
+    tex[9][1] = read_texture_building("models/textures/dach9.png");
+    std::random_device rd1;
+    std::mt19937 gen1(rd1());
+    std::uniform_int_distribution<> dis1(10000, 99999);
+    losowa_liczba = dis1(gen1);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0, b_c-1);
+    std::uniform_real_distribution<> distrib_real(0.8, 1.2);
+    for (int i = 0; i < b_c; i++) 
+    {
+        for (int j = 0; j < b_c; j++)
+        {
+            budynki_komb[i][j] = distrib(gen);
+            budynki_skala[i][j][0] = distrib_real(gen);
+            budynki_skala[i][j][1] = distrib_real(gen);
+        }
+    }
+    
+}
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow *window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -509,6 +640,20 @@ void drawScene(GLFWwindow *window) {
     glUniform1i(sp->u("textureMap1"), 1);
     glUniform1f(sp->u("lightIntensity"), 1.25f);
 
+    
+   // glm::mat4 Mplane = glm::mat4(1.0f);
+   // Mplane = glm::rotate(Mplane, angle_y, glm::vec3(1.0f, 0.0f, 0.0f));
+  //  Mplane = glm::rotate(Mplane, angle_x, glm::vec3(0.0f, 1.0f, 0.0f));
+    //Mplane = glm::translate(Mplane, glm::vec3(given_movement_x, 0.0f, 0.0f));
+    // drawAirplane(Mplane);
+    
+    //z pliku flight model.h
+   // mainAirplane.drawAirplane(delta_time, sp, &airplaneMesh, tex0, tex1);
+    //z pliku buildings.cpp
+    build_city(b_c, tex, budynki_komb, budynki_skala, sp,losowa_liczba);
+    
+
+
     drawTerrain(sp, &terrainMesh, terrainTex);
     // z pliku buildings.cpp
     build_city(b_c, tex, budynki_komb, budynki_skala, sp, losowa_liczba);
@@ -522,6 +667,7 @@ void drawScene(GLFWwindow *window) {
         mainHelicopter.updateHeli(delta_time);
         mainHelicopter.drawHelicopter(delta_time, V, sp, &helicopterMesh, &rotorMesh, &missleMesh, heliTex, missileTex, explosionTex);
     }
+
 
     glfwSwapBuffers(window);
 }

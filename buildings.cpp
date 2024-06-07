@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <random>
 
-
 #include <RigidBody.h>
 #include <ModelLoader.h>
 #include <building1.h>
@@ -52,6 +51,7 @@ void build_sufit(GLuint tex, ShaderProgram *sp, glm::mat4 M1) {
     glUniform1i(sp->u("tex"), 0);
     glDrawArrays(GL_TRIANGLES, 0, sufit_VertexCount1);
 }
+
 void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_skala[][10][2], ShaderProgram *sp,int losowa_liczba) {
     int srodkowe = 3;
     
@@ -71,12 +71,13 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
     M1 = glm::scale(M1, glm::vec3(1.5f, 1.5f, 1.5f));
     for (int i = 0; i < b_c; i++) {
         for (int j = 0; j < 8; j++) {
+    //glm::mat4 M1 = glm::mat4(1.0f);
+    //M1 = glm::scale(M1, glm::vec3(2.0f, 2.0f, 2.0f));
+    //for (int i = 0; i < b_c; i++) {
+        //for (int j = 0; j < b_c; j++) {
             M1 = glm::scale(M1, glm::vec3(budynki_skala[i][j][0], 1.0f, budynki_skala[i][j][1]));
             if (i <= 3 || i >= 6 || j < srodkowe || j >= b_c - srodkowe) {
-
-
                 if (j < srodkowe && i > 3 && i < 6) {
-
                     build(tex[budynki_komb[i][j]][0], sp, M1);
                     // jesli to jest ten co ma byc wiekszy translacja wyzej i budowa TRANSLACJA potem nizej zeby wrocic PO SUFICIE aktualnie kazdy budynek ma wysokosc 40 stad translacia o 40 w gore
                     //  zbuduje mi dwa sufity Ale nie wplywa to na wyglad gdyz tego ponizej nie widac
@@ -121,6 +122,7 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
                     }
                     build_sufit(tex[budynki_komb[i][j]][1], sp, M1);
                     M1 = glm::translate(M1, glm::vec3(88.0f, 0.0f, 0.0f));
+
                 }
                
             }
@@ -183,6 +185,7 @@ void build_city(int b_c, GLuint tex[][2], int budynki_komb[][10], float budynki_
                 }
                 M1 = M_POM;
                 M1 = glm::translate(M1, glm::vec3(88.0f, 0.0f, 0.0f));
+
                 
             }
         }
