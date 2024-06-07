@@ -508,48 +508,8 @@ glm::vec4 secondLightPosition = glm::vec4(100, 1000, 0, 1);
 glm::vec3 secondLightColor = glm::vec3(1.0f, 0.0f, 0.0f);
 float ambientStrength = 0.1f;
 float secondIntensity = 10.0f;
-
-    //wczytywanie i import obrazka
-    tex[0][0] = read_texture_building("images2/building0.png");
-    tex[0][1] = read_texture_building("models/textures/dach0.png");
-    tex[1][0] = read_texture_building("images2/building1.png");
-    tex[1][1] = read_texture_building("models/textures/dach1.png");
-    tex[2][0] = read_texture_building("images2/building2.png");
-    tex[2][1] = read_texture_building("models/textures/dach2.png");
-    tex[3][0] = read_texture_building("images2/building3.png");
-    tex[3][1] = read_texture_building("models/textures/dach3.png");
-    tex[4][0] = read_texture_building("images2/building4.png");
-    tex[4][1] = read_texture_building("models/textures/dach4.png");
-    tex[5][0] = read_texture_building("images2/building5.png");
-    tex[5][1] = read_texture_building("models/textures/dach5.png");
-    tex[6][0] = read_texture_building("images2/building6.png");
-    tex[6][1] = read_texture_building("models/textures/dach6.png");
-    tex[7][0] = read_texture_building("images2/building7.png");
-    tex[7][1] = read_texture_building("models/textures/dach7.png");
-    tex[8][0] = read_texture_building("images2/building8.png");
-    tex[8][1] = read_texture_building("models/textures/dach8.png");
-    tex[9][0] = read_texture_building("images2/building9.png");
-    tex[9][1] = read_texture_building("models/textures/dach9.png");
-    std::random_device rd1;
-    std::mt19937 gen1(rd1());
-    std::uniform_int_distribution<> dis1(10000, 99999);
-    losowa_liczba = dis1(gen1);
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distrib(0, b_c-1);
-    std::uniform_real_distribution<> distrib_real(0.8, 1.2);
-    for (int i = 0; i < b_c; i++) 
-    {
-        for (int j = 0; j < b_c; j++)
-        {
-            budynki_komb[i][j] = distrib(gen);
-            budynki_skala[i][j][0] = distrib_real(gen);
-            budynki_skala[i][j][1] = distrib_real(gen);
-        }
-    }
     
-}
+
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow *window) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
